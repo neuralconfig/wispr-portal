@@ -268,7 +268,66 @@ wispr-portal/
 
 ## API Reference
 
-### Authentication Endpoint
+This section documents the actual RUCKUS One API calls that the server makes on behalf of the client.
+
+### Always Accept Mode (Authorize)
+**POST** `https://{tenant}.wispr.ruckus.cloud:443/portalintf`
+
+**Request Body**:
+```json
+{
+  "Vendor": "Ruckus",
+  "APIVersion": "1.0",
+  "RequestUserName": "api",
+  "RequestPassword": "<Integration key>",
+  "RequestCategory": "UserOnlineControl",
+  "RequestType": "Authorize",
+  "UE-MAC": "<UE MAC>"
+}
+```
+
+### User Credentials Mode (Login)
+**POST** `https://{tenant}.wispr.ruckus.cloud:443/portalintf`
+
+**Request Body**:
+```json
+{
+  "Vendor": "Ruckus",
+  "APIVersion": "1.0",
+  "RequestUserName": "api", 
+  "RequestPassword": "<Integration key>",
+  "RequestCategory": "UserOnlineControl",
+  "RequestType": "Login",
+  "UE-MAC": "<UE MAC>",
+  "UE-IP": "<UE IP>",
+  "UE-Username": "<username>",
+  "UE-Password": "<password>"
+}
+```
+
+### RUCKUS One API Response
+**Successful Response**:
+```json
+{
+  "Vendor": "Ruckus",
+  "APIVersion": "1.0", 
+  "ResponseCode": 201,
+  "ReplyMessage": "Login succeeded",
+  "AP-MAC": "AA:BB:CC:DD:EE:FF",
+  "SSID": "ExampleWiFi",
+  "GuestUser": "0",
+  "UE-IP": "ENC...",
+  "UE-Proxy": 0,
+  "UE-Username": "...",
+  "UE-MAC": "ENC...",
+  "SmartClientMode": "none",
+  "SmartClientInfo": ""
+}
+```
+
+### Client-to-Server API
+For reference, the simplified API that clients use to communicate with this troubleshooting tool:
+
 **POST** `/api/authenticate`
 
 **Request Body**:
@@ -284,35 +343,19 @@ wispr-portal/
 }
 ```
 
-**Response**:
-```json
-{
-  "Vendor": "Ruckus",
-  "APIVersion": "1.0", 
-  "ResponseCode": 201,
-  "ReplyMessage": "Login succeeded",
-  "AP-MAC": "33:9F:37:21:88:E0",
-  "SSID": "MyWiFi"
-}
-```
-
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Unable to extract tenant ID" error**
-   - Ensure `nbiIP` parameter is present and valid
-   - Check that the URL format matches: `tenant.wispr.ruckus.cloud`
-
-2. **SSL Certificate errors**
+1. **SSL Certificate errors**
    - This is expected in the current version (SSL verification disabled for testing)
    - Enable SSL verification for production use
 
-3. **Integration key errors**
+2. **Integration key errors**
    - Verify the integration key is correct in RUCKUS One portal settings
    - Ensure the key matches the one configured in your portal
 
-4. **Captive portal not showing "Done"**
+3. **Captive portal not showing "Done"**
    - The 30-second redirect timer should trigger connectivity detection
    - Try clicking "Redirect Now" to manually trigger the redirect
 
