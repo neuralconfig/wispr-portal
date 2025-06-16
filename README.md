@@ -16,7 +16,8 @@ When users connect to a WISPr-enabled wireless network, they are redirected to a
 
 ## Tested Environment
 
-- **Hardware**: RUCKUS R1 and R770 Access Points
+- **Cloud Management**: RUCKUS One
+- **Hardware**: RUCKUS R770 Access Points
 - **Firmware**: Version 7.1.0.510.1041
 - **Authentication Mode**: "Always Accept" mode (tested and working)
 - **External AAA Mode**: Not yet tested
@@ -96,8 +97,92 @@ python server.py
 
 3. Enter your integration key and test authentication
 
+## Visual Examples
+
+### Web Interface
+When you access the application with WISPr parameters, you'll see:
+
+```
+WISPr Portal Troubleshooting Tool
+Diagnostic tool for RUCKUS One WISPr portal redirection
+
+URL Parameters
+┌─────────────┬────────────────────────────────────────────────────────┐
+│ Parameter   │ Value                                                  │
+├─────────────┼────────────────────────────────────────────────────────┤
+│ client_mac  │ ENC1234567890abcdef1234567890abcdef1234567890abcdef     │
+│ uip         │ ENC9876543210fedcba9876543210fedcba                     │
+│ nbiIP       │ example1234abcd5678efgh.wispr.ruckus.cloud             │
+│ mac         │ AA:BB:CC:DD:EE:FF                                      │
+│ ssid        │ ExampleWiFi                                            │
+└─────────────┴────────────────────────────────────────────────────────┘
+
+Authentication Settings
+Integration Key (Shared Secret): [password field]
+Authentication Mode: [Always Accept ▼]
+                    [Authenticate]
+```
+
 ### Console Logging
 The server provides color-coded logging for easy troubleshooting:
+
+```
+================================================================================
+WISPr Portal Troubleshooting Tool - Server Starting
+================================================================================
+Server running on: http://0.0.0.0:8080
+Access locally at: http://localhost:8080
+Press Ctrl+C to stop the server
+================================================================================
+
+Color Legend:
+■ CYAN: Client homepage requests
+■ BLUE: Client -> Server API requests
+■ YELLOW: Server -> RUCKUS API requests
+■ GREEN: RUCKUS API responses
+■ PURPLE: Server -> Client responses
+■ RED: Errors
+
+[2024-06-16 10:30:15] CLIENT REQUEST - Homepage
+Client IP: 127.0.0.1
+URL: http://localhost:8080/?client_mac=ENC1234567...&uip=ENC9876543...
+Query Parameters:
+  - client_mac: ENC1234567890abcdef1234567890abcdef1234567890abcdef
+  - uip: ENC9876543210fedcba9876543210fedcba
+  - nbiIP: example1234abcd5678efgh.wispr.ruckus.cloud
+
+[2024-06-16 10:30:45] CLIENT -> SERVER (Authentication Request)
+Client IP: 127.0.0.1
+Integration Key: ***HIDDEN***
+Auth Mode: always-accept
+Username: N/A
+NBI IP: example1234abcd5678efgh.wispr.ruckus.cloud
+Client MAC: ENC1234567890abcdef1234567890abcdef1234567890abcdef
+
+[2024-06-16 10:30:45] SERVER -> RUCKUS API
+API Endpoint: https://example1234abcd5678efgh.wispr.ruckus.cloud/portalintf
+Method: POST
+Headers: Content-Type: application/json
+
+[2024-06-16 10:30:46] RUCKUS API -> SERVER (Response)
+Status Code: 200
+Response Body:
+{
+  "Vendor": "Ruckus",
+  "APIVersion": "1.0",
+  "ResponseCode": 201,
+  "ReplyMessage": "Login succeeded",
+  "AP-MAC": "AA:BB:CC:DD:EE:FF",
+  "SSID": "ExampleWiFi"
+}
+✓ LOGIN SUCCEEDED
+
+[2024-06-16 10:30:46] SERVER -> CLIENT (Response)
+Status Code: 200
+Response sent to client
+```
+
+**Color Coding:**
 - 🟦 **CYAN**: Client homepage requests
 - 🟦 **BLUE**: Client → Server API requests  
 - 🟨 **YELLOW**: Server → RUCKUS API requests
