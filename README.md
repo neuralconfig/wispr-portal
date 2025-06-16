@@ -111,8 +111,8 @@ URL Parameters
 │ Parameter   │ Value                                                  │
 ├─────────────┼────────────────────────────────────────────────────────┤
 │ client_mac  │ ENC1234567890abcdef1234567890abcdef1234567890abcdef    │
-│ uip         │ ENC9876543210fedcba9876543210fedcba                   │
-│ nbiIP       │ example1234abcd5678efgh.wispr.ruckus.cloud            │
+│ uip         │ ENC9876543210fedcba9876543210fedcba                    │
+│ nbiIP       │ example1234abcd5678efgh.wispr.ruckus.cloud             │
 │ mac         │ AA:BB:CC:DD:EE:FF                                      │
 │ ssid        │ ExampleWiFi                                            │
 └─────────────┴────────────────────────────────────────────────────────┘
