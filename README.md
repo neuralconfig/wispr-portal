@@ -110,9 +110,9 @@ URL Parameters
 ┌─────────────┬────────────────────────────────────────────────────────┐
 │ Parameter   │ Value                                                  │
 ├─────────────┼────────────────────────────────────────────────────────┤
-│ client_mac  │ ENC1234567890abcdef1234567890abcdef1234567890abcdef     │
-│ uip         │ ENC9876543210fedcba9876543210fedcba                     │
-│ nbiIP       │ example1234abcd5678efgh.wispr.ruckus.cloud             │
+│ client_mac  │ ENC1234567890abcdef1234567890abcdef1234567890abcdef    │
+│ uip         │ ENC9876543210fedcba9876543210fedcba                   │
+│ nbiIP       │ example1234abcd5678efgh.wispr.ruckus.cloud            │
 │ mac         │ AA:BB:CC:DD:EE:FF                                      │
 │ ssid        │ ExampleWiFi                                            │
 └─────────────┴────────────────────────────────────────────────────────┘
@@ -124,7 +124,7 @@ Authentication Mode: [Always Accept ▼]
 ```
 
 ### Console Logging
-The server provides color-coded logging for easy troubleshooting:
+The server provides color-coded logging for easy troubleshooting. In your terminal, you'll see output like this (colors will appear when running the actual server):
 
 ```
 ================================================================================
@@ -182,13 +182,7 @@ Status Code: 200
 Response sent to client
 ```
 
-**Color Coding:**
-- 🟦 **CYAN**: Client homepage requests
-- 🟦 **BLUE**: Client → Server API requests  
-- 🟨 **YELLOW**: Server → RUCKUS API requests
-- 🟩 **GREEN**: RUCKUS API responses
-- 🟪 **PURPLE**: Server → Client responses
-- 🟥 **RED**: Errors
+**Note**: The colors shown above with emoji squares are for illustration only. When you run the server locally, you'll see actual terminal colors for each message type, making it easy to distinguish between different parts of the authentication flow.
 
 ## Google Cloud Run Deployment
 
