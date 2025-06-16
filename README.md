@@ -163,6 +163,16 @@ Client MAC: ENC1234567890abcdef1234567890abcdef1234567890abcdef
 API Endpoint: https://example1234abcd5678efgh.wispr.ruckus.cloud/portalintf
 Method: POST
 Headers: Content-Type: application/json
+Request Body:
+{
+  "Vendor": "Ruckus",
+  "APIVersion": "1.0",
+  "RequestUserName": "api",
+  "RequestPassword": "***HIDDEN***",
+  "RequestCategory": "UserOnlineControl",
+  "RequestType": "Authorize",
+  "UE-MAC": "ENC1234567890abcdef1234567890abcdef1234567890abcdef"
+}
 
 [2024-06-16 10:30:46] RUCKUS API -> SERVER (Response)
 Status Code: 200

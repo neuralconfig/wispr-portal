@@ -446,16 +446,8 @@
                     requestData.password = password;
                 }
                 
-                // Display what we're sending to our server (hide sensitive data)
-                const displayData = {...requestData};
-                displayData.integrationKey = "***HIDDEN***";
-                if (displayData.password) {
-                    displayData.password = "***HIDDEN***";
-                }
-                responseContainer.innerHTML = `
-                    <h3>Request to Server:</h3>
-                    <div class="response-container">${JSON.stringify(displayData, null, 2)}</div>
-                `;
+                // Clear the response container initially
+                responseContainer.innerHTML = '';
                 
                 // Make API call to our Flask server
                 const response = await fetch('/api/authenticate', {
@@ -470,27 +462,36 @@
                 
                 if (response.ok) {
                     messageContainer.innerHTML += '<div class="success">Authentication request sent successfully</div>';
-                    responseContainer.innerHTML += `
-                        <h3>Response:</h3>
-                        <div class="response-container">${JSON.stringify(data, null, 2)}</div>
+                    
+                    // Show the actual RUCKUS API request and response
+                    responseContainer.innerHTML = `
+                        <h3>RUCKUS One API Request (Server → RUCKUS):</h3>
+                        <div class="response-container">${JSON.stringify(data.ruckusApiRequest, null, 2)}</div>
+                        <h3>RUCKUS One API Response (RUCKUS → Server):</h3>
+                        <div class="response-container">${JSON.stringify(data.ruckusApiResponse, null, 2)}</div>
                     `;
                     
-                    // Check response code
-                    if (data.ResponseCode === 201 || data.ResponseCode === 200) {
+                    // Check response code from RUCKUS API
+                    const apiResponse = data.ruckusApiResponse;
+                    if (apiResponse.ResponseCode === 201 || apiResponse.ResponseCode === 200) {
                         messageContainer.innerHTML += '<div class="success">Login succeeded! User is now authorized.</div>';
                         
                         // Handle redirect for captive portal detection
                         handlePostAuthRedirect();
-                    } else if (data.ResponseCode === 101) {
+                    } else if (apiResponse.ResponseCode === 101) {
                         messageContainer.innerHTML += '<div class="success">Client is already authorized.</div>';
                         
                         // Handle redirect for captive portal detection
                         handlePostAuthRedirect();
-                    } else if (data.ResponseCode === 301) {
+                    } else if (apiResponse.ResponseCode === 301) {
                         messageContainer.innerHTML += '<div class="error">Login failed. Check credentials.</div>';
                     }
                 } else {
                     messageContainer.innerHTML += `<div class="error">Authentication failed: ${data.error || 'Unknown error'}</div>`;
+                    responseContainer.innerHTML += `
+                        <h3>Error Response:</h3>
+                        <div class="response-container">${JSON.stringify(data, null, 2)}</div>
+                    `;
                 }
                 
             } catch (error) {

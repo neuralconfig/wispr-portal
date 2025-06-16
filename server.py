@@ -145,6 +145,14 @@ def authenticate():
         logger.info(f"{Colors.YELLOW}API Endpoint: {api_url}{Colors.ENDC}")
         logger.info(f"{Colors.YELLOW}Method: POST{Colors.ENDC}")
         logger.info(f"{Colors.YELLOW}Headers: Content-Type: application/json{Colors.ENDC}")
+        
+        # Log request body (hide integration key)
+        log_request_body = request_body.copy()
+        log_request_body['RequestPassword'] = '***HIDDEN***'
+        if 'UE-Password' in log_request_body:
+            log_request_body['UE-Password'] = '***HIDDEN***'
+        logger.info(f"{Colors.YELLOW}Request Body:{Colors.ENDC}")
+        logger.info(f"{Colors.YELLOW}{json.dumps(log_request_body, indent=2)}{Colors.ENDC}")
         logger.info(f"{Colors.YELLOW}{'='*80}{Colors.ENDC}\n")
         
         # Make the actual API call to RUCKUS One
@@ -181,8 +189,13 @@ def authenticate():
         logger.info(f"{Colors.HEADER}Response sent to client{Colors.ENDC}")
         logger.info(f"{Colors.HEADER}{'='*80}{Colors.ENDC}\n")
         
-        # Return the response from RUCKUS One API
-        return jsonify(response_data), response.status_code
+        # Return both the RUCKUS API response and the request that was sent
+        # This helps with troubleshooting by showing exactly what was sent/received
+        result = {
+            "ruckusApiRequest": log_request_body,  # Already has passwords hidden
+            "ruckusApiResponse": response_data
+        }
+        return jsonify(result), response.status_code
         
     except requests.exceptions.RequestException as e:
         error_msg = f'Failed to connect to RUCKUS One API: {str(e)}'
