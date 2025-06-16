@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WISPr Portal Troubleshooting Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        td {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        .no-params {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background-color: #ffe6e6;
+            color: #c0392b;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #27ae60;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .response-container {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .auth-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WISPr Portal Troubleshooting Tool</h1>
+        <p class="subtitle">Diagnostic tool for RUCKUS One WISPr portal redirection</p>
+        
+        <h2>URL Parameters</h2>
+        <div id="params-container">
+            <div class="no-params">Loading URL parameters...</div>
+        </div>
+        
+        <div class="auth-section">
+            <h2>Authentication Settings</h2>
+            <div class="form-group">
+                <label for="integration-key">Integration Key (Shared Secret):</label>
+                <input type="password" id="integration-key" placeholder="Enter your integration key" />
+                <small>This is the shared secret configured in RUCKUS One portal settings</small>
+            </div>
+            <div class="form-group">
+                <label for="auth-mode">Authentication Mode:</label>
+                <select id="auth-mode">
+                    <option value="always-accept">Always Accept</option>
+                    <option value="credentials">User Credentials</option>
+                </select>
+            </div>
+            <div id="credentials-section" style="display: none;">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" placeholder="Enter username" />
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" placeholder="Enter password" />
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-container">
+            <button id="auth-button" onclick="authenticate()">Authenticate</button>
+        </div>
+        
+        <div id="message-container"></div>
+        <div id="response-container"></div>
+    </div>
+
+    <script>
+        // Function to parse URL parameters
+        function getURLParameters() {
+            const params = new URLSearchParams(window.location.search);
+            const paramObject = {};
+            
+            for (const [key, value] of params) {
+                paramObject[key] = value;
+            }
+            
+            return paramObject;
+        }
+
+        // Function to display parameters in a table
+        function displayParameters() {
+            const params = getURLParameters();
+            const container = document.getElementById('params-container');
+            
+            if (Object.keys(params).length === 0) {
+                container.innerHTML = '<div class="no-params">No URL parameters detected</div>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            for (const [key, value] of Object.entries(params)) {
+                tableHTML += `
+                    <tr>
+                        <td><strong>${key}</strong></td>
+                        <td>${value}</td>
+                    </tr>
+                `;
+            }
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = tableHTML;
+        }
+
+        // Function to validate and clean the nbiIP URL
+        function validateNbiIP(nbiIP) {
+            if (!nbiIP) return null;
+            
+            let url = nbiIP;
+            
+            // Add https:// if no scheme is present
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            
+            // Ensure the URL ends with /portalintf if it doesn't already
+            if (!url.endsWith('/portalintf')) {
+                url = url + '/portalintf';
+            }
+            
+            return url;
+        }
+
+        // Function to toggle credential fields visibility
+        function toggleAuthMode() {
+            const authMode = document.getElementById('auth-mode').value;
+            const credentialsSection = document.getElementById('credentials-section');
+            
+            if (authMode === 'credentials') {
+                credentialsSection.style.display = 'block';
+            } else {
+                credentialsSection.style.display = 'none';
+            }
+        }
+        
+        // Global variable to store the countdown timer
+        let redirectTimer = null;
+        let countdownSeconds = 30;
+        
+        // Function to handle post-authentication redirect
+        function handlePostAuthRedirect() {
+            const params = getURLParameters();
+            const messageContainer = document.getElementById('message-container');
+            
+            // Create countdown display and redirect button
+            const redirectDiv = document.createElement('div');
+            redirectDiv.id = 'redirect-container';
+            redirectDiv.innerHTML = `
+                <div class="success" style="margin-top: 20px;">
+                    <h3>Authentication Successful!</h3>
+                    <p>You can now review the troubleshooting information above.</p>
+                    <p>Automatic redirect in: <span id="countdown" style="font-weight: bold; font-size: 18px;">${countdownSeconds}</span> seconds</p>
+                    <button id="redirect-now-btn" onclick="performRedirect()" style="margin-top: 10px; background-color: #27ae60;">
+                        Redirect Now
+                    </button>
+                    <button id="cancel-redirect-btn" onclick="cancelRedirect()" style="margin-top: 10px; margin-left: 10px; background-color: #e74c3c;">
+                        Cancel Auto-Redirect
+                    </button>
+                </div>
+            `;
+            
+            messageContainer.appendChild(redirectDiv);
+            
+            // Start countdown
+            startCountdown();
+        }
+        
+        // Function to start the countdown timer
+        function startCountdown() {
+            const countdownElement = document.getElementById('countdown');
+            
+            redirectTimer = setInterval(() => {
+                countdownSeconds--;
+                if (countdownElement) {
+                    countdownElement.textContent = countdownSeconds;
+                }
+                
+                if (countdownSeconds <= 0) {
+                    performRedirect();
+                }
+            }, 1000);
+        }
+        
+        // Function to perform the actual redirect
+        function performRedirect() {
+            // Clear the timer
+            if (redirectTimer) {
+                clearInterval(redirectTimer);
+                redirectTimer = null;
+            }
+            
+            const params = getURLParameters();
+            const messageContainer = document.getElementById('message-container');
+            
+            // Show redirect message
+            const redirectContainer = document.getElementById('redirect-container');
+            if (redirectContainer) {
+                redirectContainer.innerHTML = '<div class="success">Redirecting to complete authentication...</div>';
+            }
+            
+            // Perform redirect based on available parameters
+            if (params.startUrl) {
+                window.location.href = params.startUrl;
+            } else if (params.url) {
+                // Fallback to original URL
+                window.location.href = params.url;
+            } else {
+                // Default redirects for captive portal detection
+                // Try Apple's success page first
+                window.location.href = 'http://captive.apple.com/hotspot-detect.html';
+                
+                // Alternative: redirect to a known success page
+                // window.location.href = 'http://www.apple.com/library/test/success.html';
+                // window.location.href = 'http://clients3.google.com/generate_204';
+            }
+        }
+        
+        // Function to cancel the automatic redirect
+        function cancelRedirect() {
+            if (redirectTimer) {
+                clearInterval(redirectTimer);
+                redirectTimer = null;
+            }
+            
+            const redirectContainer = document.getElementById('redirect-container');
+            if (redirectContainer) {
+                redirectContainer.innerHTML = `
+                    <div class="success">
+                        <h3>Auto-redirect cancelled</h3>
+                        <p>You can manually redirect when ready:</p>
+                        <button onclick="performRedirect()" style="background-color: #27ae60;">
+                            Redirect Now
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Function to authenticate with RUCKUS One API
+        async function authenticate() {
+            const button = document.getElementById('auth-button');
+            const messageContainer = document.getElementById('message-container');
+            const responseContainer = document.getElementById('response-container');
+            
+            // Clear previous messages
+            messageContainer.innerHTML = '';
+            responseContainer.innerHTML = '';
+            
+            // Get form inputs
+            const integrationKey = document.getElementById('integration-key').value;
+            const authMode = document.getElementById('auth-mode').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Validate integration key
+            if (!integrationKey) {
+                messageContainer.innerHTML = '<div class="error">Please enter the integration key (shared secret)</div>';
+                return;
+            }
+            
+            // Get URL parameters
+            const params = getURLParameters();
+            
+            // Check required parameters
+            if (!params.nbiIP || !params.client_mac || !params.uip) {
+                messageContainer.innerHTML = '<div class="error">Missing required parameters: nbiIP, client_mac, or uip</div>';
+                return;
+            }
+            
+            // Validate and use the nbiIP URL directly
+            const apiUrl = validateNbiIP(params.nbiIP);
+            if (!apiUrl) {
+                messageContainer.innerHTML = '<div class="error">Invalid nbiIP parameter</div>';
+                return;
+            }
+            
+            // Disable button and show loading
+            button.disabled = true;
+            button.innerHTML = 'Authenticating<span class="loading"></span>';
+            
+            try {
+                // Validate credentials if needed
+                if (authMode === 'credentials' && (!username || !password)) {
+                    messageContainer.innerHTML = '<div class="error">Please enter username and password</div>';
+                    button.disabled = false;
+                    button.innerHTML = 'Authenticate';
+                    return;
+                }
+                
+                messageContainer.innerHTML = `<div class="success">Sending authentication request to server...</div>`;
+                if (authMode === 'always-accept') {
+                    messageContainer.innerHTML += '<div class="success">Using "Always Accept" mode - any credentials will be accepted</div>';
+                }
+                
+                // Prepare request data for Flask server
+                const requestData = {
+                    integrationKey: integrationKey,
+                    authMode: authMode,
+                    nbiIP: params.nbiIP,
+                    clientMac: params.client_mac,
+                    clientIP: params.uip
+                };
+                
+                // Add credentials if in credentials mode
+                if (authMode === 'credentials') {
+                    requestData.username = username;
+                    requestData.password = password;
+                }
+                
+                // Display what we're sending to our server (hide sensitive data)
+                const displayData = {...requestData};
+                displayData.integrationKey = "***HIDDEN***";
+                if (displayData.password) {
+                    displayData.password = "***HIDDEN***";
+                }
+                responseContainer.innerHTML = `
+                    <h3>Request to Server:</h3>
+                    <div class="response-container">${JSON.stringify(displayData, null, 2)}</div>
+                `;
+                
+                // Make API call to our Flask server
+                const response = await fetch('/api/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    messageContainer.innerHTML += '<div class="success">Authentication request sent successfully</div>';
+                    responseContainer.innerHTML += `
+                        <h3>Response:</h3>
+                        <div class="response-container">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                    
+                    // Check response code
+                    if (data.ResponseCode === 201 || data.ResponseCode === 200) {
+                        messageContainer.innerHTML += '<div class="success">Login succeeded! User is now authorized.</div>';
+                        
+                        // Handle redirect for captive portal detection
+                        handlePostAuthRedirect();
+                    } else if (data.ResponseCode === 101) {
+                        messageContainer.innerHTML += '<div class="success">Client is already authorized.</div>';
+                        
+                        // Handle redirect for captive portal detection
+                        handlePostAuthRedirect();
+                    } else if (data.ResponseCode === 301) {
+                        messageContainer.innerHTML += '<div class="error">Login failed. Check credentials.</div>';
+                    }
+                } else {
+                    messageContainer.innerHTML += `<div class="error">Authentication failed: ${data.error || 'Unknown error'}</div>`;
+                }
+                
+            } catch (error) {
+                messageContainer.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.innerHTML = 'Authenticate';
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            displayParameters();
+            
+            // Add event listener for auth mode change
+            document.getElementById('auth-mode').addEventListener('change', toggleAuthMode);
+        });
+    </script>
+</body>
+</html>
