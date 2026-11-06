@@ -11,7 +11,8 @@ python3 -m venv /opt/wispr-portal/.venv
 chown -R root:root /opt/wispr-portal
 install -m 644 "$(dirname "$0")/wispr-portal.service" /etc/systemd/system/wispr-portal.service
 systemctl daemon-reload
-systemctl enable --now wispr-portal
+systemctl enable wispr-portal
+systemctl restart wispr-portal          # restart, so a re-install (upgrade) serves the new code
 sleep 2
 PORT=$(sed -n "s/^PORT=//p" /etc/wispr-portal/portal.env | tail -1)
 curl -fsS "http://127.0.0.1:${PORT:-8080}/healthz" && echo
