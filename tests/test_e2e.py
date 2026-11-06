@@ -97,6 +97,18 @@ def test_csrf_required(make_app, nbi):
     assert nbi.requests == []
 
 
+def test_expired_without_session_logs_the_shown_reference(make_app, nbi):
+    """Lab, 2026-11-06: a stale POST with no session showed a ref that was not in the log."""
+    app = make_app()
+    r = app.test_client().post("/accept", data={"csrf": "stale"})
+    assert r.status_code == 403
+    ref = re.search(r"reference: <strong>([A-Z0-9-]+)</strong>", r.get_data(as_text=True)).group(1)
+    assert r.headers["X-Request-Ref"] == ref
+    ev = {e["event"]: e for e in events(app)}
+    assert ev["csrf_failed"]["ref"] == ref and ev["error_shown"]["ref"] == ref
+    assert ev["error_shown"]["kind"] == "expired"
+
+
 def test_bad_params_friendly_error_with_reference(make_app, nbi):
     app = make_app()
     r = app.test_client().get("/", query_string=redirect_qs(client_mac="zzz"))

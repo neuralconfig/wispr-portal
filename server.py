@@ -144,11 +144,18 @@ def create_app(cfg: Config | None = None) -> Flask:
             "help_text": cfg.help_text,
         }
 
+    def ensure_ref() -> str:
+        """The ref the guest sees must be in the log too: make one when there is no visit."""
+        if not g.get("ref"):
+            g.ref = new_ref()
+        return g.ref
+
     def error_page(kind: str, status: int, retry_url: str | None = None):
         title, body = FRIENDLY[kind]
+        ensure_ref()
         emit("error_shown", kind=kind, http_status=status)
         return render_template("customer/error.html", title=title, body=body,
-                               ref=g.get("ref") or new_ref(), retry_url=retry_url,
+                               ref=g.ref, retry_url=retry_url,
                                **brand_ctx()), status
 
     def redirect_target(values: dict) -> str | None:
@@ -188,7 +195,7 @@ def create_app(cfg: Config | None = None) -> Flask:
             return jsonify(error="not found"), 404
         return render_template("customer/error.html", title="Page not found",
                                body="Please open any web page to get back to the guest Wi-Fi sign-in.",
-                               ref=g.get("ref") or new_ref(), retry_url=None, **brand_ctx()), 404
+                               ref=ensure_ref(), retry_url=None, **brand_ctx()), 404
 
     @app.errorhandler(413)
     def _413(_e):
@@ -286,6 +293,7 @@ def create_app(cfg: Config | None = None) -> Flask:
 
     def check_post(json_api: bool):
         """Common checks for the accept/debug POSTs. Returns (visit, error_response)."""
+        ensure_ref()
         if not limiter.allow("accept", client_ip(), cfg.rate_accept_per_min):
             emit("rate_limited", bucket="accept")
             return None, (jsonify(error="rate_limited", ref=g.ref), 429) if json_api else error_page("rate_limited", 429)
