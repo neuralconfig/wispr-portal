@@ -151,9 +151,10 @@ KNOWN: dict[str, tuple] = {
     "sip": (_host, "Controller captive-portal FQDN"),
     "dn": (_host, "Domain name"),
     "zoneId": (_token, "Zone ID (3rd-party APs)"),
-    "zoneName": (_token, "Zone name (encoded)"),
+    "zoneName": (_token, "Opaque zone token (7.1.1.3: <token>_<epoch ms>)"),
     "lid": (lambda v: _text(v, 253), "Location ID"),
     "loc": (lambda v: _text(v, 253), "Location name"),
+    "domain_name": (lambda v: _text(v, 128), "SZ management domain (seen on 7.1.1.3)"),
     "sshTunnelStatus": (_flag, "AP-to-controller tunnel up (1) or down (0)"),
 }
 

@@ -136,14 +136,55 @@ and never used. After success the portal sends the guest to `startUrl`, else `ur
 - The AP can redirect to a secondary portal when it cannot reach the controller, but "No NBI is supported for backup" (G70 p.26). WISPr survivability uses the ZD-style AP API, which this portal does not implement.
 - Session timeout and grace period come from the Hotspot portal profile (G70 p.27), not from the NBI.
 
+## Lab results: FIPS vSZ-H 7.1.1.3.571, run 1 (2026-11-06)
+
+Run by the DHA-Wi-Fi session: WLAN Pi client, curl in netns `guest`, portal in debug mode on
+`dha-portal` 10.7.39.10:8080, SZ_AUTH_METHOD=login. Portal refs 49JV-C6TP (failed) and
+482Y-V4N8 (passed). Raw evidence (events.jsonl, accept JSON, RADIUS logs) is kept by the DHA-Wi-Fi
+project under `evidence/r3-guest/20261106/portal-run1/`.
+
+- **Always Accept is not offered without proxy (new finding).** On this FIPS cluster, Always
+  Accept and Local Database exist only when authentication goes through the controller (proxy),
+  confirmed in the SZ UI. The non-proxy services are zone RADIUS servers only. The lab therefore
+  uses a **real shared credential**: `SZ_GUEST_USERNAME=dha-guest` plus
+  `SZ_GUEST_PASSWORD_FILE`, checked by PAP on a separate guest-only FreeRADIUS virtual
+  server (UDP 1912/1913, one account, EAP refused). The SZ client list shows `dha-guest` for every guest.
+- **The SZ sends the RADIUS Access-Request itself**, from the SZ node (192.168.37.6), not from the
+  AP, even with `throughController=false`. The RADIUS server must list the SZ nodes as clients.
+  Before that was fixed, the SZ never answered the Login and the portal hit its 12 s
+  `SZ_NBI_TIMEOUT` (ref 49JV-C6TP: `nbi_error` timeout, then Status still 100). Set `SZ_NBI_TIMEOUT` above the
+  SZ's RADIUS timeout × retries + failover, or a slow primary RADIUS shows the guest an error
+  while the SZ may still authorize the client. The SZ included Message-Authenticator.
+- **Login works:** `201 Login succeeded` in 301.6 ms; /api/accept took 565 ms end to end.
+- **Status works on vSZ-H 7.1.1.3** (unlike what G70 p.39 implies): 100 "Client unauthorized" before and 101
+  "Client authorized" after. The reply carries the AP MAC, SSID, `wsgWlanId` 9, the zone id and UE-Username.
+- **Vendor:** the portal sends `ruckus` and the SZ accepts it. Replies carry `"Vendor": "Ruckus"`.
+- **nbiIP** was 192.168.37.6, the node that answered. The other node was not tested.
+- **9443 TLS in FIPS:** TLS 1.2 `ECDHE-RSA-AES128-GCM-SHA256`, factory leaf
+  CN=scg.ruckuswireless.com (SHA-256 bd098ebc...a8a705). Leaf-as-anchor plus pin works.
+- **Real redirect** (302 from the AP, `Server: GoAhead-Webs`), with its parameters in this order:
+  `nbiIP, client_mac, domain_name, reason, wlanName, dn, ssid, mac, url, proxy, vlan, wlan, sip,
+  zoneName, apip, sshTunnelStatus, uip`.
+  - `client_mac` and `uip` arrived **in clear**, not ENC. Encrypt MAC/IP was off, and the
+    portal-profile UI showed no toggle (still being looked for).
+  - MAC format `AA:BB:CC:DD:EE:FF`.
+  - `dn` and `sip` = `scg.ruckuswireless.com`.
+  - `domain_name=Administration Domain` (not in G70 Table 16).
+  - `zoneName` is not the zone name but an opaque `<22-char token>_<epoch ms>`, where the epoch is
+    the redirect time.
+  - No `startUrl`, so the portal used `url`.
+- **Walled garden:** before authorization only the portal and DNS were reachable. After it,
+  traffic was open (lab gateway, no segmentation yet).
+
 ## Open questions (lab or RUCKUS)
 
-1. Does **7.1.1.3 FIPS** still match the 7.0.0 guide? The 7.1.0 guide (G710) could not be downloaded without a support login.
+1. *(Partly answered by run 1: Login and Status behave as in G70.)* Does **7.1.1.3 FIPS** still match the 7.0.0 guide? The 7.1.0 guide (G710) could not be downloaded without a support login.
 2. Does `RequestType: Authorize` exist on 7.1.1.3 (CF-NBI, 5.1 code)? If so, does it need the Always Accept service, and what does it return?
-3. Does **Status** work on **vSZ-H** 7.1.1.3, or does it return 304 as G70 p.39 implies?
-4. Exact `Vendor` value check: `ruckus` vs `Ruckus` vs configurable (CF-NBI says it is compared to a setting).
-5. With Always Accept, does the NBI still require non-empty `UE-Username` / `UE-Password`, and what user name shows in the SZ client list and accounting?
-6. In a 2-node cluster, does `nbiIP` point to the node the AP is homed on? Does the other node also answer for that UE (is client state cluster-wide)? The portal only fails over on connection errors, never after a request was sent.
-7. Which certificate and TLS security level does port 9443 use in FIPS mode (FIPS p.47-50, p.83)?
-8. What the redirect from a FIPS 7.1.1.3 Hotspot WLAN actually contains: names, encryption on/off, MAC format. The DHA session will capture one.
+3. ~~Status on vSZ-H~~ **Answered:** it works (run 1).
+4. **Answered for the default:** `ruckus` is accepted, and replies say `Ruckus`. Whether it is configurable is still open.
+5. **Moot on FIPS 7.1.1.3 non-proxy:** Always Accept is not offered, so a real shared credential is used, and the client list shows `dha-guest`. Still open for proxy mode: with Always Accept, does the NBI still require non-empty `UE-Username` / `UE-Password`, and what user name shows in the SZ client list and accounting?
+6. *(Partly answered: nbiIP = .6 answered.)* In a 2-node cluster, does `nbiIP` point to the node the AP is homed on? Does the other node also answer for that UE (is client state cluster-wide)? The portal only fails over on connection errors, never after a request was sent.
+7. **Answered:** the factory leaf (CN=scg.ruckuswireless.com, no SAN, no chain) with TLS 1.2 ECDHE-RSA-AES128-GCM-SHA256. Whether an uploaded cert replaces it on 9443 is still open.
+8. **Answered** (see Lab results). Open: where Encrypt MAC/IP is set on 7.1.1.3, and whether `zoneName` can be decoded.
 9. NBI behaviour on a request for a UE that is not on a Hotspot WLAN (expected 300), and on a Login for a UE in grace period.
+10. **Answered:** how long the SZ waits on RADIUS. WLAN 9 `radiusOptions`: nasRequestTimeoutSec 3, nasMaxRetry 2, nasReconnectPrimaryMin 5. Observed: 5 Access-Requests 3 s apart (~15 s) to a dead primary, then the SZ moves to the secondary and retries the primary after 5 min. So the first guest after the primary fails needs more than 15 s. The SZ default for `SZ_NBI_TIMEOUT` is now 20 s.

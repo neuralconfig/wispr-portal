@@ -51,6 +51,8 @@ def test_customer_click_through(make_app, nbi):
     req = next(e for e in ev if e["event"] == "nbi_request")
     assert req["body"]["RequestPassword"] == "********"               # never in the log
     assert req["client_mac"] == ENC_MAC                                 # full value in server log
+    assert re.match(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$", req["sent_at"])
+    assert req["sent_at"] <= resp["ts"]                                 # send time, not log time
 
 
 def test_customer_second_accept_is_already_authorized(make_app, nbi):

@@ -158,7 +158,7 @@ missing or invalid setting.
 | `SZ_TLS_SERVER_NAME` | the NBI host | Name to verify the certificate against (e.g. `scg.ruckuswireless.com`) |
 | `SZ_CERT_SHA256` | unset | Pin the NBI leaf certificate (hex, colons allowed) |
 | `SZ_TLS_MAX_VERSION` | unset | `1.2` to offer only TLS 1.2 AES-GCM suites |
-| `SZ_NBI_TIMEOUT` / `SZ_NBI_CONNECT_TIMEOUT` | `12` / `3` s | Read / connect timeouts. Failover to the next allowlisted host only on connect errors. |
+| `SZ_NBI_TIMEOUT` / `SZ_NBI_CONNECT_TIMEOUT` | `20` / `3` s (R1: `12` / `3`) | Read / connect timeouts. A SZ Login waits for the SZ's RADIUS exchange, so keep the read timeout above the RADIUS timeout × tries (3 s × 5 = 15 s in the lab). Failover to the next allowlisted host only on connect errors. |
 | `SZ_ASYNC_POLL_INTERVAL` / `SZ_ASYNC_MAX_WAIT` | `1` / `15` s | `login_async` polling |
 
 ### RUCKUS One backend (`R1_`)

@@ -21,6 +21,10 @@ _COLOURS = {
 _RESET = "\033[0m"
 
 
+def utc_from_epoch_ms(epoch_s: float) -> str:
+    return datetime.fromtimestamp(epoch_s, timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
 def utc_now_ms() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 

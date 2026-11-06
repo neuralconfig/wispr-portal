@@ -113,6 +113,25 @@ def test_failover_only_on_connect_errors(monkeypatch):
 
 
 # ---- parameter validation -----------------------------------------------------------
+def test_parse_real_fips_7113_redirect():
+    """Redirect captured from the lab (FIPS vSZ-H 7.1.1.3, 2026-11-06), MAC/IP in clear."""
+    qs = ("nbiIP=192.168.37.6&client_mac=C8:15:4E:89:2F:AB&domain_name=Administration+Domain"
+          "&reason=Un-Auth-Captive&wlanName=DHA-GUEST-PORTAL&dn=scg.ruckuswireless.com"
+          "&ssid=DHA-GUEST-PORTAL&mac=ac:de:01:37:dc:d0&url=http%3A%2F%2Fneverssl.com%2F&proxy=0"
+          "&vlan=739&wlan=9&sip=scg.ruckuswireless.com&zoneName=eLjRO_bSfCkbJzeRWKBiSg_1793998189295"
+          "&apip=192.168.37.99&sshTunnelStatus=1&uip=10.7.39.100")
+    from urllib.parse import parse_qsl
+    p = parse_redirect(dict(parse_qsl(qs)))
+    assert p.ok and not p.mac_encrypted and not p.rejected and not p.unknown
+    assert p.values["domain_name"] == "Administration Domain"
+    assert p.values["url"] == "http://neverssl.com/"
+
+
+def test_sz_default_read_timeout_covers_radius_retries():
+    assert load_config(SZ_ENV).nbi.timeout_s == 20.0
+    assert load_config(R1_ENV).nbi.timeout_s == 12.0
+
+
 def test_parse_full_sz_redirect():
     p = parse_redirect({"client_mac": ENC_MAC, "uip": ENC_IP, "nbiIP": "192.168.37.6",
                         "mac": "8c:0c:90:2b:8b:90", "ssid": "DHA-Guest", "url": "http://www.google.com/",

@@ -219,7 +219,9 @@ def _nbi_config(env: Mapping[str, str], backend: str) -> NbiConfig:
         # SZ 7.0 guide p.39: Status "is only applicable to SZ100 and vSZ-E platforms";
         # the DHA lab is vSZ-H, so it is opt-in. Debug mode still probes it (DEBUG_STATUS_CHECKS).
         status_supported=_bool(env, f"{p}STATUS_SUPPORTED", False),
-        timeout_s=_float(env, f"{p}NBI_TIMEOUT", 12.0, 1.0, 120.0),
+        # SZ: a Login waits for the SZ's own RADIUS exchange. Lab (7.1.1.3): 3 s x 5 tries to a dead
+        # primary is ~15 s before the secondary is tried, so the default must be longer than that.
+        timeout_s=_float(env, f"{p}NBI_TIMEOUT", 20.0 if backend == "smartzone" else 12.0, 1.0, 120.0),
         connect_timeout_s=_float(env, f"{p}NBI_CONNECT_TIMEOUT", 3.0, 0.5, 30.0),
         async_poll_s=_float(env, f"{p}ASYNC_POLL_INTERVAL", 1.0, 0.2, 10.0),
         async_max_s=_float(env, f"{p}ASYNC_MAX_WAIT", 15.0, 1.0, 120.0),

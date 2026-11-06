@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass, field
 
 from . import nbi as N
-from .events import EventBus
+from .events import EventBus, utc_from_epoch_ms
 from .masking import mask_body, mask_ip, mask_mac
 from .nbi import HostNotAllowed, NbiClient, NbiError, NbiExchange
 
@@ -87,9 +87,11 @@ class Authorizer:
         full_ue, pub_ue = self._ue(params)
         common = {"ref": ref, "backend": self.backend, "request_type": ex.request_type,
                   "nbi_host": ex.host, "url": ex.url}
+        # Events are emitted after the exchange; sent_at is when the request actually went out.
+        sent_at = utc_from_epoch_ms(ex.started)
         self.bus.emit("nbi_request",
-                      {**common, **full_ue, "body": mask_body(ex.body, mask_ue=False)},
-                      {**common, **pub_ue, "body": mask_body(ex.body, mask_ue=self.mask_public)})
+                      {**common, "sent_at": sent_at, **full_ue, "body": mask_body(ex.body, mask_ue=False)},
+                      {**common, "sent_at": sent_at, **pub_ue, "body": mask_body(ex.body, mask_ue=self.mask_public)})
         if ex.error is not None:
             data = {**common, "error_kind": ex.error.kind, "error": ex.error.detail,
                     "http_status": ex.http_status, "duration_ms": ex.duration_ms, "tls": ex.tls}
