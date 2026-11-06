@@ -197,11 +197,12 @@ Client: Pi `guest` netns, firefox-esr (streamed over VNC). Portal in debug mode.
   used both ways. The SZ proxies the AP's RADIUS for NBI logins even with a non-proxy WLAN
   auth service, so the RADIUS server must accept the SZ nodes as clients.
 - The Authorize reply has no UE-Username.
+- **Fresh-MAC Authorize** (random MAC, ref GGT7-EC9C): Status 100 → Authorize 201 (190 ms) → Status 101 with UE-Username = the MAC (`025b5d617954`). The SZ client list shows that user name, auth "HotSpot(Wispr)+Open", AUTHORIZED, VLAN 739. No RADIUS packets.
 
 ## Open questions (lab or RUCKUS)
 
 1. *(Partly answered by run 1: Login and Status behave as in G70.)* Does **7.1.1.3 FIPS** still match the 7.0.0 guide? The 7.1.0 guide (G710) could not be downloaded without a support login.
-2. **Answered (run 1b):** `Authorize` exists on 7.1.1.3 FIPS. It returns 201 "Login succeeded" and sends no RADIUS. Still open: is it supported by RUCKUS, and which user name is recorded for a client that was never logged in? In run 1b, Status after Authorize showed `dha-guest`, but that MAC had logged in as dha-guest minutes earlier, so the name may be cached. Test with a fresh MAC.
+2. **Answered (run 1b):** `Authorize` exists on 7.1.1.3 FIPS. It returns 201 "Login succeeded" and sends no RADIUS. For a fresh client the SZ records the **client MAC as the user name** (lowercase, no separators, e.g. `025b5d617954`; auth "HotSpot(Wispr)+Open"). The `dha-guest` seen after Authorize in run 1b was left over from the earlier Login on that MAC (fresh-MAC check, page GGT7-EC9C, 22:49 UTC, 0 RADIUS packets). Still open: RUCKUS support status.
 3. ~~Status on vSZ-H~~ **Answered:** it works (run 1).
 4. **Answered for the default:** `ruckus` is accepted, and replies say `Ruckus`. Whether it is configurable is still open.
 5. **Moot on FIPS 7.1.1.3 non-proxy:** Always Accept is not offered, so a real shared credential is used, and the client list shows `dha-guest`. Still open for proxy mode: with Always Accept, does the NBI still require non-empty `UE-Username` / `UE-Password`, and what user name shows in the SZ client list and accounting?
