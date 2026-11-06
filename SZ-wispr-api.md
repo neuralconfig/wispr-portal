@@ -36,14 +36,14 @@ Disconnect, Enrichment Info**. GetConfig adds **Encrypt** and **Decrypt** (G70 p
 guide adds nothing about NBI commands.
 
 - RUCKUS One has `Authorize` for click-through ("Always Accept"; CF-R1AA). The existing R1 mode of this portal uses it. The R1 public reference documents only `Login` (R1 doc, "JSON Commands"). **No R1 parity is assumed for SZ.**
-- The internal CF-NBI page (SZ **5.1** code) lists `RequestType` values `LOGIN`, `LOGIN_ASYNC`, `STATUS`, `LOGOUT`, `DISCONNECT`, **`AUTHORIZE` ("Authorized directly")**, plus `Encrypt`/`Decrypt`. So the SZ NBI has had an undocumented Authorize command. Whether 7.1.1.3 FIPS still has it, which WLAN authentication service it needs, and whether its reply codes match are **unknown**.
+- The internal CF-NBI page (SZ **5.1** code) lists `RequestType` values `LOGIN`, `LOGIN_ASYNC`, `STATUS`, `LOGOUT`, `DISCONNECT`, **`AUTHORIZE` ("Authorized directly")**, plus `Encrypt`/`Decrypt`. So the SZ NBI has had an undocumented Authorize command. **Lab (run 1b, 2026-11-06): it exists on 7.1.1.3 FIPS vSZ-H.** `Authorize` returned `201 Login succeeded` in 187 ms, and Status went 100 → 101. The SZ sent **no RADIUS request at all** (radius1 log and radius2 pcap), so Authorize bypasses the WLAN's authentication service. It is still undocumented, so RUCKUS should confirm it is supported before production relies on it.
 
 **What the portal does:**
 
 | Setting | Request | When to use |
 |---|---|---|
-| `SZ_AUTH_METHOD=login` (**default**) | `RequestType: Login` with a fixed `UE-Username` / `UE-Password` from config (`SZ_GUEST_USERNAME`, default `guest`) | Documented path (G70 p.38). Set the Hotspot WLAN's **Authentication Service** to **Always Accept**. G70 p.33 Table 8 lists "Local DB, Always Accept, and any AAA servers" as the options. With Always Accept, any user name and password is accepted. A Local DB user or RADIUS works too if DHA wants named accounting. |
-| `SZ_AUTH_METHOD=authorize` (opt-in, **lab test**) | `RequestType: Authorize`, no UE credentials | Undocumented on SZ (CF-NBI). Try it in the lab. A 304 *Command not supported* means it is gone. |
+| `SZ_AUTH_METHOD=login` (**default**) | `RequestType: Login` with a fixed `UE-Username` / `UE-Password` from config (`SZ_GUEST_USERNAME`, default `guest`) | Documented path (G70 p.38). G70 p.33 Table 8 lists "Local DB, Always Accept, and any AAA servers" as the options, and with Always Accept any user name and password works. **On FIPS 7.1.1.3, Always Accept and Local DB need proxy (through-controller) auth**, so without proxy the lab uses a real shared RADIUS account (`dha-guest`, PAP). Proven in the lab, runs 1 and 1b. |
+| `SZ_AUTH_METHOD=authorize` (opt-in) | `RequestType: Authorize`, no UE credentials | Undocumented on SZ (CF-NBI), but **proven on FIPS 7.1.1.3 (run 1b): 201, and no RADIUS**. It is real credential-less click-through: no guest account and no guest RADIUS server are needed at authorization time. The WLAN still has to name some authentication service to be created. Get RUCKUS support confirmation before relying on it. |
 | `SZ_AUTH_METHOD=login_async` (opt-in) | `LoginAsync`, then poll `Status` | Needs `Status` support (see §4). Polls every `SZ_ASYNC_POLL_INTERVAL` s for up to `SZ_ASYNC_MAX_WAIT` s. |
 
 Login request as built by the portal (G70 p.38 example and field names):
@@ -73,7 +73,7 @@ returns 101, and after a 301 returns 100 (G70 p.39 note).
 
 `Vendor`: the SZ guide examples send `"ruckus"` and the replies say `"Ruckus"`. CF-NBI says
 the value is checked against a controller setting and a mismatch gives **302**. The default is
-`ruckus` (configurable as `SZ_VENDOR`). The lab must confirm it.
+`ruckus` (configurable as `SZ_VENDOR`). Lab: `ruckus` is accepted on 7.1.1.3.
 
 ## 3. Encrypted UE-MAC / UE-IP (`ENC...`)
 
@@ -179,10 +179,29 @@ project under `evidence/r3-guest/20261106/portal-run1/`.
 - **Walled garden:** before authorization only the portal and DNS were reachable. After it,
   traffic was open (lab gateway, no segmentation yet).
 
+## Lab results: run 1b (2026-11-06, 22:22-22:33 UTC)
+
+Client: Pi `guest` netns, firefox-esr (streamed over VNC). Portal in debug mode. Refs CMPA-ZAF7
+(login, logout), AGVJ-W7V9 (authorize, disconnect), ACH6-MX6C (back to login).
+
+| Request | Reply | NBI time | Effect |
+|---|---|---|---|
+| Login | 201 Login succeeded | 255 / 292 ms | Status 100 → 101. UE-Username `dha-guest` |
+| Logout | 200 OK | 227 ms | Client captive again at once. Status 100 |
+| Authorize | 201 Login succeeded | 187 ms | Status 100 → 101. **No RADIUS packet** |
+| Disconnect | 200 OK | 175 ms | AP deauthenticates the client (wlan1 down ~3 s, rejoins by itself). Status 100 |
+| Status | 100 / 101 | 66-124 ms | |
+
+- **RADIUS from a Login:** the UDP source is the SZ node (192.168.37.6), but NAS-IP-Address = the AP
+  (192.168.37.99) and NAS-Identifier = the AP BSSID. Proxy-State is present, and Message-Authenticator is
+  used both ways. The SZ proxies the AP's RADIUS for NBI logins even with a non-proxy WLAN
+  auth service, so the RADIUS server must accept the SZ nodes as clients.
+- The Authorize reply has no UE-Username.
+
 ## Open questions (lab or RUCKUS)
 
 1. *(Partly answered by run 1: Login and Status behave as in G70.)* Does **7.1.1.3 FIPS** still match the 7.0.0 guide? The 7.1.0 guide (G710) could not be downloaded without a support login.
-2. Does `RequestType: Authorize` exist on 7.1.1.3 (CF-NBI, 5.1 code)? If so, does it need the Always Accept service, and what does it return?
+2. **Answered (run 1b):** `Authorize` exists on 7.1.1.3 FIPS. It returns 201 "Login succeeded" and sends no RADIUS. Still open: is it supported by RUCKUS, and which user name is recorded for a client that was never logged in? In run 1b, Status after Authorize showed `dha-guest`, but that MAC had logged in as dha-guest minutes earlier, so the name may be cached. Test with a fresh MAC.
 3. ~~Status on vSZ-H~~ **Answered:** it works (run 1).
 4. **Answered for the default:** `ruckus` is accepted, and replies say `Ruckus`. Whether it is configurable is still open.
 5. **Moot on FIPS 7.1.1.3 non-proxy:** Always Accept is not offered, so a real shared credential is used, and the client list shows `dha-guest`. Still open for proxy mode: with Always Accept, does the NBI still require non-empty `UE-Username` / `UE-Password`, and what user name shows in the SZ client list and accounting?
