@@ -1,5 +1,20 @@
 // Progressive enhancement only: the form works without JavaScript.
-// Shows a "connecting" state and stops double submits.
+// Shows a "connecting" state and stops double submits; ticks the success-page countdown.
+(function () {
+  "use strict";
+  // Success page: the redirect itself is the <meta refresh>; this only updates the text.
+  // No aria-live, so screen readers are not interrupted every second.
+  var countdown = document.getElementById("countdown");
+  if (!countdown) { return; }
+  var left = parseInt(countdown.getAttribute("data-seconds"), 10);
+  if (!(left > 0)) { return; }
+  var timer = window.setInterval(function () {
+    left -= 1;
+    if (left <= 0) { window.clearInterval(timer); left = 0; }
+    countdown.textContent = left + (left === 1 ? " second" : " seconds");
+  }, 1000);
+})();
+
 (function () {
   "use strict";
   var form = document.getElementById("accept-form");

@@ -34,6 +34,8 @@ def test_customer_click_through(make_app, nbi):
     page = r.get_data(as_text=True)
     assert "You are connected" in page
     assert 'http-equiv="refresh" content="4;url=http://connectivitycheck.gstatic.com/generate_204"' in page
+    assert '<span id="countdown" data-seconds="4">4 seconds</span>' in page
+    assert '<script src="/static/js/customer.js" defer></script>' in page and "<script>" not in page
 
     sent = nbi.requests[-1]
     assert sent["RequestType"] == "Login" and sent["UE-MAC"] == ENC_MAC

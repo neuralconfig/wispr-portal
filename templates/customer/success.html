@@ -10,11 +10,12 @@
     <h1 id="ok-title" tabindex="-1">You are connected</h1>
     <p class="lead">Your device is now online. Thank you for using {{ facility }} guest Wi-Fi.</p>
     {% if target %}
-      <p>We will take you to your page in {{ delay }} seconds.</p>
+      <p>We will take you to your page in <span id="countdown" data-seconds="{{ delay }}">{{ delay }} second{{ "" if delay == 1 else "s" }}</span>.</p>
       <p><a class="button button--link" href="{{ target }}">Continue</a></p>
     {% else %}
       <p>You can close this window and start browsing.</p>
     {% endif %}
   </section>
 {% endblock %}
+{% block scripts %}{% if target %}<script src="/static/js/customer.js" defer></script>{% endif %}{% endblock %}
 {% block footer_ref %}<p class="ref">Reference: <span>{{ ref }}</span></p>{% endblock %}
