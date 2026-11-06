@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="csrf-token" content="{{ csrf }}">
+  <title>WISPr portal debug | {{ ref }}</title>
+  <link rel="stylesheet" href="/static/css/debug.css">
+</head>
+<body>
+<header class="bar">
+  <h1>WISPr portal <span class="tag">debug</span></h1>
+  <p>Reference <code id="ref">{{ ref }}</code></p>
+</header>
+<main class="grid">
+  <section class="panel" aria-labelledby="h-params">
+    <h2 id="h-params">Redirect parameters</h2>
+    {% if not params_ok %}<p class="warn" role="alert">Required parameters are missing or invalid: the NBI will reject this client.</p>{% endif %}
+    <p class="note">client_mac is {% if mac_encrypted %}<strong>encrypted (ENC…)</strong>: it is passed back to the NBI unchanged{% else %}<strong>clear text</strong>: passed back exactly as received (the portal profile's MAC format){% endif %}.</p>
+    <table>
+      <thead><tr><th scope="col">Parameter</th><th scope="col">Value</th><th scope="col">Check</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="state-{{ 'ok' if r.state == 'ok' else 'bad' if 'invalid' in r.state or 'missing' in r.state else 'other' }}">
+          <th scope="row" title="{{ r.desc }}">{{ r.name }}</th>
+          <td><code>{{ r.value }}</code></td>
+          <td>{{ r.state }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="3">No parameters. Open this page through the controller's redirect.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <details><summary>Raw query string</summary><pre class="wrap">{{ query }}</pre></details>
+  </section>
+
+  <section class="panel" aria-labelledby="h-settings">
+    <h2 id="h-settings">Portal settings</h2>
+    <dl class="kv">
+      {% for k, v in settings %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}
+      <dt>NBI target</dt><dd>{{ nbi_note }}</dd>
+      <dt>After success</dt><dd>{{ redirect_target }}</dd>
+    </dl>
+  </section>
+
+  <section class="panel panel--wide" aria-labelledby="h-actions">
+    <h2 id="h-actions">Actions</h2>
+    <div class="actions">
+      <button type="button" class="primary" data-action="accept">I agree (authorize)</button>
+      <button type="button" data-action="status">Status</button>
+      <button type="button" data-action="logout">Logout</button>
+      <button type="button" data-action="disconnect">Disconnect</button>
+      <button type="button" data-action="decrypt">Decrypt MAC/IP</button>
+    </div>
+    <noscript>
+      <form method="post" action="/accept"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit">I agree (no JavaScript)</button></form>
+    </noscript>
+    <p id="summary" class="summary" role="status" aria-live="polite"></p>
+    <div id="exchanges"></div>
+  </section>
+
+  <section class="panel panel--wide" aria-labelledby="h-log">
+    <h2 id="h-log">Live step log <span id="sse-state" class="tag tag--muted">connecting</span></h2>
+    <ol id="log" class="log" aria-live="polite"></ol>
+  </section>
+</main>
+<script src="/static/js/debug.js" defer></script>
+</body>
+</html>

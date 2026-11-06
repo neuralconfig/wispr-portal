@@ -1,19 +1,28 @@
-# Use the official Python runtime as a parent image
-FROM python:3.11-slim
+# WISPr external captive portal (SmartZone / RUCKUS One). See README.md for the env vars.
+FROM python:3.12-slim
 
-# Set the working directory in the container
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PORT=8080
+
 WORKDIR /app
 
-# Copy the current directory contents into the container
 COPY requirements.txt .
-COPY server.py .
-COPY index.html .
+RUN pip install --no-cache-dir -r requirements.txt \
+ && groupadd --system --gid 10001 portal \
+ && useradd --system --uid 10001 --gid portal --home-dir /nonexistent --shell /usr/sbin/nologin portal
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=root:root server.py gunicorn.conf.py ./
+COPY --chown=root:root wispr/ ./wispr/
+COPY --chown=root:root templates/ ./templates/
+COPY --chown=root:root static/ ./static/
+COPY --chown=root:root content/ ./content/
 
-# Make port 8080 available to the world outside this container
-EXPOSE 8080
+# Code is root-owned and read-only for the runtime user.
+USER 10001:10001
 
-# Run gunicorn when the container launches
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 server:app
+EXPOSE 8080 8443
+
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "server:app"]

@@ -1,0 +1,15 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+tests
+tools
+docs
+ruckus-docs
+*.md
+!README.md
+.env*
+secrets
+*.pem
+*.key

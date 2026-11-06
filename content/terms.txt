@@ -1,0 +1,17 @@
+# Terms of use
+
+Guest Wi-Fi is provided free of charge as a courtesy to patients, visitors and families. It is a shared, public network: it is not encrypted end to end, and you are responsible for protecting your own device and information.
+
+# Acceptable use
+
+By connecting, you agree that you will not use this network to:
+
+- break any law or regulation, or infringe anyone's rights, including copyright;
+- access, store or share material that is obscene, threatening, harassing or hateful;
+- attempt to gain unauthorized access to any system, network or account, or interfere with this network or other users;
+- send spam, malware or other harmful content;
+- use excessive bandwidth (for example large peer-to-peer transfers) in a way that degrades the service for patients and other guests.
+
+# Service
+
+Access may be filtered, limited in time or speed, monitored, or ended at any time without notice. The service is provided "as is", with no guarantee of availability, speed or security. Do not use guest Wi-Fi for medical emergencies: if you need help, contact a staff member.

@@ -69,3 +69,9 @@ config/secrets.json
 .local/
 tmp/
 temp/
+# Local
+.venv/
+.pytest_cache/
+fake-nbi-ca.pem
+# RUCKUS PDFs are copyrighted; keep them out of the public repo
+ruckus-docs/
