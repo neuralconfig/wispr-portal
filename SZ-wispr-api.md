@@ -127,7 +127,7 @@ to an integer.
 `client_mac` (encrypted UE MAC), `uip` (encrypted UE IP), `nbiIP` / `nbiIPv6`, `mac` (AP MAC),
 `apip`, `ssid`, `wlanName`, `url` (original URL), `startUrl` (portal-profile start page),
 `reason` (`Un-Auth-Captive` / `Un-Auth-SSL-Captive`), `proxy`, `vlan`, `wlan`, `sip`, `dn`,
-`lid`, `loc`, `sshTunnelStatus`, `zoneId`, `zoneName`. All are validated (see
+`lid`, `loc`, `sshTunnelStatus`, `zoneId`, `zoneName`. **FIPS 7.1.1.3 spells the start page `StartURL`** (lab, 2026-11-06), so the portal matches parameter names case-insensitively. The spelling received is logged as `aliases` in `redirect_received`, and sending both spellings is rejected as a repeated parameter. All are validated (see
 `wispr/params.py`). Only `client_mac` is required. Unknown parameters are shown in debug mode
 and never used. After success the portal sends the guest to `startUrl`, else `url`, else
 `DEFAULT_REDIRECT_URL`. Only http(s) URLs are allowed.

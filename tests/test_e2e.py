@@ -57,6 +57,14 @@ def test_customer_click_through(make_app, nbi):
     assert req["sent_at"] <= resp["ts"]                                 # send time, not log time
 
 
+def test_customer_redirects_to_fips_start_url(make_app, nbi):
+    """SZ 7.1.1.3 sends StartURL (not startUrl); it must win over url."""
+    c = make_app().test_client()
+    html = c.get("/", query_string=redirect_qs(StartURL="https://www.health.mil/")).get_data(as_text=True)
+    page = c.post("/accept", data={"csrf": csrf_from(html)}).get_data(as_text=True)
+    assert 'content="4;url=https://www.health.mil/"' in page
+
+
 def test_customer_second_accept_is_already_authorized(make_app, nbi):
     c = make_app().test_client()
     for expected in (201, 101):

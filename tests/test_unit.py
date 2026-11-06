@@ -127,6 +127,23 @@ def test_parse_real_fips_7113_redirect():
     assert p.values["url"] == "http://neverssl.com/"
 
 
+def test_fips_7113_start_url_spelling():
+    """FIPS 7.1.1.3 sends the portal-profile start page as StartURL (lab, 2026-11-06)."""
+    from urllib.parse import parse_qsl
+    qs = ("nbiIP=192.168.37.6&client_mac=02:5B:5D:61:79:54&url=http%3A%2F%2Fexample.com%2F"
+          "&StartURL=https%3A%2F%2Fwww.health.mil%2F&uip=10.7.39.101")
+    p = parse_redirect(dict(parse_qsl(qs)))
+    assert p.ok and not p.unknown and not p.rejected
+    assert p.get("startUrl") == "https://www.health.mil/" and p.aliases == {"startUrl": "StartURL"}
+
+
+def test_start_url_both_spellings_is_rejected():
+    from werkzeug.datastructures import MultiDict
+    p = parse_redirect(MultiDict([("client_mac", "02:5B:5D:61:79:54"),
+                                  ("startUrl", "https://a.example/"), ("StartURL", "https://b.example/")]))
+    assert "startUrl" not in p.values and p.rejected["startUrl"] == "repeated parameter"
+
+
 def test_sz_default_read_timeout_covers_radius_retries():
     assert load_config(SZ_ENV).nbi.timeout_s == 20.0
     assert load_config(R1_ENV).nbi.timeout_s == 12.0

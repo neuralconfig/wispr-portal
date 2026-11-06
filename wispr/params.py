@@ -161,6 +161,10 @@ KNOWN: dict[str, tuple] = {
 REQUIRED = ("client_mac",)
 MAX_UNKNOWN = 20
 
+# Parameter names are matched case-insensitively. G70 Table 16 spells the start page
+# "startUrl", but FIPS SZ 7.1.1.3 sends "StartURL" (lab, 2026-11-06).
+_CANONICAL = {name.lower(): name for name in KNOWN}
+
 
 @dataclass
 class RedirectParams:
@@ -168,6 +172,7 @@ class RedirectParams:
     unknown: dict[str, str] = field(default_factory=dict)      # shown in debug only, never used
     rejected: dict[str, str] = field(default_factory=dict)     # name -> reason
     missing: list[str] = field(default_factory=list)
+    aliases: dict[str, str] = field(default_factory=dict)      # canonical name -> spelling received
 
     @property
     def ok(self) -> bool:
@@ -191,6 +196,14 @@ def parse_redirect(args) -> RedirectParams:
             result.rejected[name] = "repeated parameter"
             continue
         raw = raw_list[0]
+        canon = _CANONICAL.get(name.lower())
+        if canon is not None and canon != name:
+            result.aliases[canon] = name
+            name = canon
+        if name in result.values or name in result.rejected:   # e.g. startUrl and StartURL both sent
+            result.values.pop(name, None)
+            result.rejected[name] = "repeated parameter"
+            continue
         if name not in KNOWN:
             if len(result.unknown) < MAX_UNKNOWN and len(name) <= 40:
                 shown = _text(raw, 200)

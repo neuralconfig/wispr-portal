@@ -224,7 +224,7 @@ def create_app(cfg: Config | None = None) -> Flask:
         params: RedirectParams = parse_redirect(request.args)
         g.ref = new_ref()
         emit("redirect_received", params=params.values, unknown=params.unknown,
-             rejected=params.rejected, missing=params.missing,
+             rejected=params.rejected, missing=params.missing, aliases=params.aliases,
              user_agent=request.headers.get("User-Agent", "")[:300])
 
         if not params.ok:
