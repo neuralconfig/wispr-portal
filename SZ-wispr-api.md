@@ -77,6 +77,9 @@ the value is checked against a controller setting and a mismatch gives **302**. 
 
 ## 3. Encrypted UE-MAC / UE-IP (`ENC...`)
 
+- **FIPS overrides this (lab, 2026-11-06):** on 7.1.1.3 with FIPS compliance on, MAC/IP encryption is **disabled**. The SZ CLI says "The feature is disabled by enabling FIPS compliance" (seen by the user; a question to RUCKUS engineering is open). The redirect therefore carries `client_mac` and `uip` **in clear**, as seen in run 1. The portal handles clear and ENC values the same way.
+  - Consequences: the clear MAC/IP sit in the guest's URL and browser history and in the portal's server log. Customer-mode pages and SSE still mask them.
+  - A guest could also edit `client_mac`/`uip` in the URL to name another device. The impact is limited: customer mode only sends Login, and this is click-through anyway. Logout, Disconnect and Status are debug-only. A possible hardening step, not yet implemented: require `uip` to equal the request's source IP when the portal is on the guest VLAN without NAT, as in the lab.
 - The controller encrypts `client_mac` and `uip` in the redirect by default (G70 p.43: "By default the encryption is enabled"). Turn it off with the CLI `no encrypt-mac-ip` and check it with `show running-config encrypt-mac-ip` (G70 p.43-44).
 - "Northbound Interface (NBI) expects to receive encrypted UE-IP and UE-MAC address (For example, ENC12bc...) when the request category is UserOnlineControl" (G70 p.37 note). The NBI decrypts them itself and returns them re-encrypted in the reply (G70 p.37, p.53).
 - **Portal rule:** `client_mac` and `uip` go back to the NBI **exactly as received**: no decrypting, re-casing or reformatting. Clear (unencrypted) values are also passed through unchanged in the format the portal profile uses ("Redirected MAC Format", G70 p.27). CF-NBI says plain values are accepted "for backward-compatible". R1 says an unencrypted UE-MAC "must exactly match the client_mac in the query string".
@@ -165,8 +168,8 @@ project under `evidence/r3-guest/20261106/portal-run1/`.
 - **Real redirect** (302 from the AP, `Server: GoAhead-Webs`), with its parameters in this order:
   `nbiIP, client_mac, domain_name, reason, wlanName, dn, ssid, mac, url, proxy, vlan, wlan, sip,
   zoneName, apip, sshTunnelStatus, uip`.
-  - `client_mac` and `uip` arrived **in clear**, not ENC. Encrypt MAC/IP was off, and the
-    portal-profile UI showed no toggle (still being looked for).
+  - `client_mac` and `uip` arrived **in clear**, not ENC. FIPS compliance disables Encrypt MAC/IP
+    (section 3).
   - MAC format `AA:BB:CC:DD:EE:FF`.
   - `dn` and `sip` = `scg.ruckuswireless.com`.
   - `domain_name=Administration Domain` (not in G70 Table 16).
@@ -185,6 +188,6 @@ project under `evidence/r3-guest/20261106/portal-run1/`.
 5. **Moot on FIPS 7.1.1.3 non-proxy:** Always Accept is not offered, so a real shared credential is used, and the client list shows `dha-guest`. Still open for proxy mode: with Always Accept, does the NBI still require non-empty `UE-Username` / `UE-Password`, and what user name shows in the SZ client list and accounting?
 6. *(Partly answered: nbiIP = .6 answered.)* In a 2-node cluster, does `nbiIP` point to the node the AP is homed on? Does the other node also answer for that UE (is client state cluster-wide)? The portal only fails over on connection errors, never after a request was sent.
 7. **Answered:** the factory leaf (CN=scg.ruckuswireless.com, no SAN, no chain) with TLS 1.2 ECDHE-RSA-AES128-GCM-SHA256. Whether an uploaded cert replaces it on 9443 is still open.
-8. **Answered** (see Lab results). Open: where Encrypt MAC/IP is set on 7.1.1.3, and whether `zoneName` can be decoded.
+8. **Answered** (see Lab results). Encrypt MAC/IP is disabled by FIPS compliance (section 3), so clear values are expected. Open: RUCKUS confirmation, and whether `zoneName` can be decoded.
 9. NBI behaviour on a request for a UE that is not on a Hotspot WLAN (expected 300), and on a Login for a UE in grace period.
 10. **Answered:** how long the SZ waits on RADIUS. WLAN 9 `radiusOptions`: nasRequestTimeoutSec 3, nasMaxRetry 2, nasReconnectPrimaryMin 5. Observed: 5 Access-Requests 3 s apart (~15 s) to a dead primary, then the SZ moves to the secondary and retries the primary after 5 min. So the first guest after the primary fails needs more than 15 s. The SZ default for `SZ_NBI_TIMEOUT` is now 20 s.
