@@ -119,6 +119,14 @@ def make_ssl_context(cfg: NbiConfig) -> ssl.SSLContext:
     ctx.set_ciphers(FIPS_CIPHERS_TLS12)
     ctx.check_hostname = True
     ctx.verify_mode = ssl.CERT_REQUIRED
+    # The SZ factory certificate on 9443 is a leaf only (no chain is sent, and the
+    # "Ruckus Certificate Authority" root is not published). Partial-chain verification lets
+    # *_CA_BUNDLE hold that leaf (or an intermediate) as the trust anchor. The chain still
+    # ends at something the operator configured, and the name and the optional pin are
+    # still checked. Python 3.13+ sets this flag by default.
+    ctx.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+    # The factory leaf has no subjectAltName, only CN=scg.ruckuswireless.com.
+    ctx.hostname_checks_common_name = True
     return ctx
 
 

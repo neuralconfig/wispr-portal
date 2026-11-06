@@ -264,3 +264,57 @@ def test_r1_backend_end_to_end(make_app, nbi, pki):
     assert nbi.requests[-1]["RequestType"] == "Authorize"
     assert nbi.requests[-1]["RequestPassword"] == "ikey"
 
+
+
+def _factory_like_cert(tmp_path):
+    """Mimic the SZ 9443 factory cert: leaf only, CN=scg.ruckuswireless.com, no SAN, no
+    basicConstraints, issued by a CA the portal does not have."""
+    import datetime
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    ca_key = rsa.generate_private_key(public_exponent=65537, key_size=3072)
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Certificate Authority")])
+    key = rsa.generate_private_key(public_exponent=65537, key_size=3072)
+    leaf = (x509.CertificateBuilder()
+            .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "scg.ruckuswireless.com")]))
+            .issuer_name(ca_name).public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now - datetime.timedelta(days=1)).not_valid_after(now + datetime.timedelta(days=30))
+            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
+            .sign(ca_key, hashes.SHA384()))
+    cert = tmp_path / "factory-leaf.pem"
+    keyf = tmp_path / "factory-key.pem"
+    cert.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+    keyf.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL,
+                                       serialization.NoEncryption()))
+    import hashlib
+    return str(cert), str(keyf), hashlib.sha256(leaf.public_bytes(serialization.Encoding.DER)).hexdigest()
+
+
+def test_factory_leaf_as_trust_anchor_with_pin(make_app, tmp_path):
+    """Lab setup: SZ_CA_BUNDLE = the 9443 leaf itself, name scg.ruckuswireless.com, pinned."""
+    import fake_nbi
+    import conftest
+    cert, key, fp = _factory_like_cert(tmp_path)
+    state = fake_nbi.FakeNbiState(username="nbi", password="nbi-secret")
+    httpd, _t = fake_nbi.start(state, "127.0.0.1", 0, cert, key)
+    state.port = httpd.server_address[1]
+    try:
+        from server import create_app
+        from wispr.config import load_config
+        for name, pin, ok in (("scg.ruckuswireless.com", fp, True),
+                              ("scg.ruckuswireless.com", "f" * 64, False),
+                              ("wrong.example", fp, False)):
+            env = {**conftest.base_env(state, {"ca": cert}), "SZ_NBI_PORT": str(httpd.server_address[1]),
+                   "SZ_CA_BUNDLE": cert, "SZ_TLS_SERVER_NAME": name, "SZ_CERT_SHA256": fp if pin == fp else pin,
+                   "LOG_JSON_PATH": str(tmp_path / "f.jsonl")}
+            c = create_app(load_config(env)).test_client()
+            html = c.get("/", query_string=redirect_qs()).get_data(as_text=True)
+            r = c.post("/accept", data={"csrf": csrf_from(html)})
+            assert (r.status_code == 200) is ok, (name, pin[:4])
+    finally:
+        httpd.shutdown()
