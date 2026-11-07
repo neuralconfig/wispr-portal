@@ -1,0 +1,28 @@
+[Unit]
+Description=WISPr click-through guest portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=wispr
+Group=wispr
+WorkingDirectory=/opt/wispr-portal
+EnvironmentFile=/etc/wispr-portal/portal.env
+ExecStart=/opt/wispr-portal/.venv/bin/gunicorn --config gunicorn.conf.py server:app
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/log/wispr-portal
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+{% extends "customer/base.html" %}
+{% block head %}{% if target %}<meta http-equiv="refresh" content="{{ delay }};url={{ target }}">{% endif %}{% endblock %}
+{% block title %}You are connected{% endblock %}
+{% block main %}
+  <section class="card card--center" aria-labelledby="ok-title">
+    <svg class="result-icon result-icon--ok" viewBox="0 0 48 48" width="64" height="64" aria-hidden="true" focusable="false">
+      <circle cx="24" cy="24" r="22" fill="#e6f4ea" stroke="#1e7b34" stroke-width="2"/>
+      <path d="M14 24.5l7 7 13-14" fill="none" stroke="#1e7b34" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1 id="ok-title" tabindex="-1">You are connected</h1>
+    <p class="lead">Your device is now online. Thank you for using {{ facility }} guest Wi-Fi.</p>
+    {% if target %}
+      <p>We will take you to your page in <span id="countdown" data-seconds="{{ delay }}">{{ delay }} second{{ "" if delay == 1 else "s" }}</span>.</p>
+      <p><a class="button button--link" href="{{ target }}">Continue</a></p>
+    {% else %}
+      <p>You can close this window and start browsing.</p>
+    {% endif %}
+  </section>
+{% endblock %}
+{% block scripts %}{% if target %}<script src="/static/js/customer.js" defer></script>{% endif %}{% endblock %}
+{% block footer_ref %}<p class="ref">Reference: <span>{{ ref }}</span></p>{% endblock %}

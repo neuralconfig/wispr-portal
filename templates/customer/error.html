@@ -1,0 +1,15 @@
+{% extends "customer/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block main %}
+  <section class="card card--center" aria-labelledby="err-title">
+    <svg class="result-icon" viewBox="0 0 48 48" width="64" height="64" aria-hidden="true" focusable="false">
+      <circle cx="24" cy="24" r="22" fill="#fdf0e6" stroke="#9a4a00" stroke-width="2"/>
+      <path d="M24 13v14" fill="none" stroke="#9a4a00" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="24" cy="34" r="2.6" fill="#9a4a00"/>
+    </svg>
+    <h1 id="err-title" tabindex="-1">{{ title }}</h1>
+    <p class="lead">{{ body }}</p>
+    {% if retry_url %}<p><a class="button button--link" href="{{ retry_url }}">Try again</a></p>{% endif %}
+    <p class="ref ref--box">If you ask for help, please give this reference: <strong>{{ ref }}</strong></p>
+  </section>
+{% endblock %}

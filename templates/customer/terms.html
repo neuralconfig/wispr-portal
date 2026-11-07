@@ -1,0 +1,44 @@
+{% extends "customer/base.html" %}
+{% macro render_blocks(blocks, level) -%}
+  {%- for b in blocks -%}
+    {%- if b.type == "h" -%}<h{{ level }}>{{ b.text }}</h{{ level }}>
+    {%- elif b.type == "ul" -%}<ul>{% for i in b["items"] %}<li>{{ i }}</li>{% endfor %}</ul>
+    {%- else -%}<p>{{ b.text }}</p>{%- endif -%}
+  {%- endfor -%}
+{%- endmacro %}
+{% block title %}Connect to guest Wi-Fi{% endblock %}
+{% block main %}
+  <section class="card" aria-labelledby="welcome-title">
+    <h1 id="welcome-title">Welcome to {{ facility }} guest Wi-Fi</h1>
+    <p class="lead">{{ welcome }}</p>
+
+    <section class="terms" aria-labelledby="terms-title">
+      <h2 id="terms-title" class="visually-hidden">Terms of use and acceptable use policy</h2>
+      <div class="scrollbox" tabindex="0" role="region" aria-labelledby="terms-title">
+        {{ render_blocks(terms, 3) }}
+      </div>
+    </section>
+
+    <section class="notice" aria-labelledby="notice-title">
+      <h2 id="notice-title" class="visually-hidden">Notice and consent</h2>
+      <div class="scrollbox scrollbox--notice" tabindex="0" role="region" aria-labelledby="notice-title">
+        {{ render_blocks(notice, 3) }}
+      </div>
+    </section>
+
+    <form id="accept-form" class="accept" method="post" action="/accept" novalidate>
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <p class="accept__consent" id="consent-text">
+        By selecting <strong>{{ agree_label }}</strong> you confirm that you have read and accept the
+        terms of use, the acceptable use policy and the notice above.
+      </p>
+      <button id="accept-button" class="button" type="submit" aria-describedby="consent-text">
+        <span class="button__label">{{ agree_label }}</span>
+        <span class="button__busy" aria-hidden="true"></span>
+      </button>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+{% endblock %}
+{% block footer_ref %}<p class="ref">Reference: <span>{{ ref }}</span></p>{% endblock %}
+{% block scripts %}<script src="/static/js/customer.js" defer></script>{% endblock %}

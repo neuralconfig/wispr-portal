@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  {% block head %}{% endblock %}
+  <title>{% block title %}Guest Wi-Fi{% endblock %} | {{ facility }}</title>
+  <link rel="stylesheet" href="/static/css/customer.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to main content</a>
+  <header class="masthead">
+    <div class="masthead__inner">
+      {% if logo_url %}
+        <img class="masthead__logo" src="{{ logo_url }}" alt="{{ logo_alt }}">
+      {% else %}
+        <svg class="masthead__mark" viewBox="0 0 48 48" width="40" height="40" aria-hidden="true" focusable="false">
+          <circle cx="24" cy="24" r="23" fill="#ffffff" fill-opacity="0.12"/>
+          <path d="M10 20.5a20 20 0 0 1 28 0" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M15 26a13 13 0 0 1 18 0" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M20 31.4a6 6 0 0 1 8 0" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/>
+          <circle cx="24" cy="36" r="2.6" fill="#ffffff"/>
+        </svg>
+      {% endif %}
+      <div class="masthead__text">
+        <p class="masthead__facility">{{ facility }}</p>
+        <p class="masthead__service">Guest Wi-Fi</p>
+      </div>
+    </div>
+  </header>
+  <main id="main" class="page" tabindex="-1">
+    {% block main %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <p>{{ help_text }}</p>
+    {% block footer_ref %}{% endblock %}
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
