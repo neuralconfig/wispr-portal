@@ -16,6 +16,7 @@ export default defineConfig({
           CONNECTOR_TOKEN_SHA256: sha(TEST_CONNECTOR_TOKEN),
           EVENTS_TOKEN_SHA256: sha(TEST_EVENTS_TOKEN),
           SZ_NBI_PASSWORD: "nbi-secret-test",
+          SZ_GUEST_PASSWORD: "guest-secret-test",
           HEALTH_GRACE_S: "0",
           TEST_CONNECTOR_TOKEN,
           TEST_EVENTS_TOKEN,
