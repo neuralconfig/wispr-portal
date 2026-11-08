@@ -1,0 +1,31 @@
+[Unit]
+Description=wispr-connector (%i): hosted WISPr portal <-> SmartZone NBI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=wispr-connector
+Group=wispr-connector
+WorkingDirectory=/opt/wispr-connector
+EnvironmentFile=/etc/wispr-connector/%i.env
+Environment=CONNECTOR_ENV=%i
+Environment=LOG_JSON_PATH=/var/log/wispr-connector/%i.jsonl
+ExecStart=/opt/wispr-connector/.venv/bin/python -m connector
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/log/wispr-connector
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target

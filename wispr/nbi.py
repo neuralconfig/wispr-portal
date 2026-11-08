@@ -112,7 +112,7 @@ def make_ssl_context(cfg: NbiConfig) -> ssl.SSLContext:
     https-client-security-level 2/3 suites). The TLS 1.3 suites OpenSSL offers by default
     include ChaCha20, but a FIPS SmartZone only selects AES-GCM. Pin TLS 1.2 with
     *_TLS_MAX_VERSION=1.2 if a strict AES-GCM-only offer is required."""
-    ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=cfg.ca_bundle)
+    ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=cfg.ca_bundle, cadata=cfg.ca_pem)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     if cfg.tls_max_version == "1.2":
         ctx.maximum_version = ssl.TLSVersion.TLSv1_2
@@ -125,9 +125,53 @@ def make_ssl_context(cfg: NbiConfig) -> ssl.SSLContext:
     # ends at something the operator configured, and the name and the optional pin are
     # still checked. Python 3.13+ sets this flag by default.
     ctx.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
-    # The factory leaf has no subjectAltName, only CN=scg.ruckuswireless.com.
+    # The factory leaf has no subjectAltName, only CN=scg.ruckuswireless.com. OpenSSL 4 dropped the
+    # CN fallback (hostname_checks_common_name has no effect there), so OpenSSL's own name check
+    # would reject that leaf. The chain is still verified by OpenSSL (CERT_REQUIRED); the name is
+    # checked in _VerifiedHTTPSConnection.connect by check_peer_name() on every OpenSSL version.
     ctx.hostname_checks_common_name = True
+    if ssl.OPENSSL_VERSION_INFO[0] >= 4:
+        ctx.check_hostname = False
     return ctx
+
+
+def _dns_match(pattern: str, name: str) -> bool:
+    """RFC 6125 matching: exact, or a single left-most '*' label (no partial wildcards)."""
+    pattern, name = pattern.lower().rstrip("."), name.lower().rstrip(".")
+    if pattern == name:
+        return True
+    if pattern.startswith("*.") and "*" not in pattern[2:]:
+        head, _, rest = name.partition(".")
+        return bool(head) and rest == pattern[2:]
+    return False
+
+
+def check_peer_name(cert: dict, server_name: str) -> None:
+    """Raise SSLCertVerificationError unless the verified peer certificate is valid for
+    ``server_name``: subjectAltName DNS/IP entries when present, otherwise the subject CN
+    (the SZ factory leaf). ``cert`` is SSLSocket.getpeercert() of a verified handshake."""
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(server_name)
+    except ValueError:
+        ip = None
+    sans = cert.get("subjectAltName", ())
+    if sans:
+        for kind, value in sans:
+            if ip is None and kind == "DNS" and _dns_match(value, server_name):
+                return
+            if ip is not None and kind == "IP Address":
+                try:
+                    if ipaddress.ip_address(value.strip()) == ip:
+                        return
+                except ValueError:
+                    continue
+    elif ip is None:
+        for rdn in cert.get("subject", ()):
+            for key, value in rdn:
+                if key == "commonName" and _dns_match(value, server_name):
+                    return
+    raise ssl.SSLCertVerificationError(f"Hostname mismatch, certificate is not valid for {server_name!r}")
 
 
 class _VerifiedHTTPSConnection(http.client.HTTPSConnection):
@@ -149,6 +193,11 @@ class _VerifiedHTTPSConnection(http.client.HTTPSConnection):
             self.sock = self._context.wrap_socket(sock, server_hostname=self._server_name)
         except Exception:
             sock.close()
+            raise
+        try:
+            check_peer_name(self.sock.getpeercert() or {}, self._server_name)
+        except ssl.SSLError:
+            self.sock.close()
             raise
         der = self.sock.getpeercert(binary_form=True) or b""
         fp = hashlib.sha256(der).hexdigest()
