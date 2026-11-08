@@ -78,7 +78,7 @@ async function readFrames(res: Response, until: (frames: any[]) => boolean, time
       const id = /^id: (\d+)$/m.exec(chunk)?.[1];
       const data = /^data: (.*)$/m.exec(chunk)?.[1];
       if (data) frames.push({ id: Number(id), ...JSON.parse(data) });
-      else if (chunk.startsWith("retry:")) frames.push({ retry: chunk });
+      else if (/^retry:/m.test(chunk)) frames.push({ retry: chunk });
     }
   }
   await reader.cancel().catch(() => {});
@@ -285,7 +285,8 @@ describe("events API", () => {
     const p2 = await events(`limit=2&cursor=${p1.next_cursor}`);
     expect(p2.events[0].seq).toBe(all[2].seq);
     const tail = await events(`cursor=${all.at(-1).seq}`);
-    expect(tail).toEqual({ events: [], next_cursor: null });
+    expect(tail).toEqual({ events: [], next_cursor: null, head_seq: expect.any(Number) });
+    expect(tail.head_seq).toBeGreaterThanOrEqual(all.at(-1).seq);
   });
 
   it("streams live only by default, and replays from Last-Event-ID", async () => {
@@ -298,7 +299,8 @@ describe("events API", () => {
     await settle();
     const { ref } = form(await (await page()).text());
     const frames = await reading;
-    expect(frames[0].retry).toMatch(/^retry: 3000\nid: \d+$/); // a Last-Event-ID even before any event
+    // The instance (a comment, ignored by EventSource), then a Last-Event-ID even before any event.
+    expect(frames[0].retry).toMatch(/^: instance=[0-9a-f]{8} booted_at=\S+Z\nretry: 3000\nid: \d+$/);
     const evs = frames.filter((f) => f.event);
     expect(evs.map((f) => f.event)).toEqual(["redirect_received", "terms_shown"]);
     expect(evs.every((f) => f.ref === ref)).toBe(true);
@@ -309,6 +311,38 @@ describe("events API", () => {
     });
     const again = (await readFrames(replay, (f) => f.filter((x) => x.event).length >= 2)).filter((f) => f.event);
     expect(again.slice(0, 2).map((f) => f.id)).toEqual([evs[0].id, evs[1].id]);
+  });
+
+  it("marks open streams, and logs hub_started when a new instance finds another's streams were open", async () => {
+    const marker = () =>
+      runInDurableObject(hubStub(), (_h: TenantHub, state) =>
+        state.storage.sql.exec<{ v: string }>(`SELECT v FROM kv WHERE k = 'streams_open'`).toArray()[0]?.v ?? null,
+      );
+    const res = await SELF.fetch("https://api.test/v1/tenants/dha/events/stream", { headers: AUTH });
+    await readFrames(res, (f) => f.length >= 1); // reads the first frame, then cancels
+    await settle();
+    expect(await marker()).toBeNull(); // cancelled: the marker is cleared with the last stream
+    const info = await runInDurableObject(hubStub(), (h: TenantHub) => h.hubInfo());
+    expect(info.instance).toMatch(/^[0-9a-f]{8}$/);
+    // A boot is quiet unless the marker names another instance (hibernation wakes are normal).
+    await runInDurableObject(hubStub(), (h: TenantHub) => (h as any).noteBoot());
+    expect((await events("limit=1000")).events.some((e: any) => e.event === "hub_started")).toBe(false);
+    await runInDurableObject(hubStub(), (h: TenantHub, state) => {
+      state.storage.sql.exec(`INSERT INTO kv (k, v) VALUES ('streams_open', ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v`,
+        JSON.stringify({ instance: "deadbeef", count: 2, since: Date.parse("2026-11-08T22:00:00Z") }));
+      (h as any).noteBoot();
+    });
+    const started = (await events("limit=1000")).events.filter((e: any) => e.event === "hub_started");
+    expect(started).toHaveLength(1);
+    expect(started[0]).toMatchObject({
+      instance: info.instance,
+      previous_instance: "deadbeef",
+      streams_lost: 2,
+      streams_open_since: "2026-11-08T22:00:00.000Z",
+    });
+    expect(await marker()).toBeNull();
+    const health = await (await SELF.fetch("https://api.test/v1/tenants/dha/healthz", { headers: AUTH })).json<any>();
+    expect(health.hub).toMatchObject({ instance: info.instance, head_seq: started[0].seq });
   });
 
   it("ends streams when the instance is stale (a deploy) or after 15 minutes, so clients reconnect", async () => {

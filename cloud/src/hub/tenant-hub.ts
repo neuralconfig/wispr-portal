@@ -107,6 +107,10 @@ export class TenantHub extends DurableObject<Env> {
   private keepalive: ReturnType<typeof setInterval> | null = null;
   private inflight = new Map<string, Promise<PageResult>>();
   private hits = new Map<string, number[]>();
+  // This in-memory instance. The DO is rebuilt on every hibernation wake (the connector socket is hibernatable),
+  // so a new id alone is normal; hub_started is only emitted when an instance with open streams went away.
+  private readonly instance = crypto.randomUUID().slice(0, 8);
+  private readonly bootedAt = Date.now();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -127,6 +131,46 @@ export class TenantHub extends DurableObject<Env> {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS debug_exchanges (id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT,
       ts_ms INTEGER NOT NULL, json TEXT NOT NULL)`);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG));
+    this.noteBoot();
+  }
+
+  /** Streams keep an instance in memory, so if the "streams_open" marker names another instance, that
+   *  instance was reset or replaced (deploy, runtime restart) with streams open: say so in the event log. */
+  private noteBoot(): void {
+    const marker = this.kvGet("streams_open");
+    let prev: { instance: string; count: number; since: number } | null = null;
+    try {
+      prev = marker ? JSON.parse(marker) : null;
+    } catch {
+      prev = null;
+    }
+    console.log(JSON.stringify({ event: "hub_boot", instance: this.instance, prev_streams: prev?.count ?? 0 }));
+    if (prev && prev.instance !== this.instance) {
+      this.sql.exec(`DELETE FROM kv WHERE k = 'streams_open'`);
+      this.appendEvent("hub_started", {
+        instance: this.instance,
+        previous_instance: prev.instance,
+        streams_lost: prev.count,
+        streams_open_since: nowIso(prev.since),
+      });
+    }
+    this.lastSeq = Math.max(this.lastSeq, this.maxSeq());
+  }
+
+  /** The marker noteBoot() reads; rewritten whenever this instance's stream count changes. */
+  private markStreams(): void {
+    if (this.streams.size) {
+      const prev = this.kvGet("streams_open");
+      const since = prev ? (JSON.parse(prev).instance === this.instance ? JSON.parse(prev).since : Date.now()) : Date.now();
+      this.kvSet("streams_open", JSON.stringify({ instance: this.instance, count: this.streams.size, since }));
+    } else {
+      this.sql.exec(`DELETE FROM kv WHERE k = 'streams_open'`);
+    }
+  }
+
+  /** Who this instance is, for token healthz and the SSE first frame. */
+  hubInfo(): { instance: string; booted_at: string; head_seq: number; streams_open: number } {
+    return { instance: this.instance, booted_at: nowIso(this.bootedAt), head_seq: this.maxSeq(), streams_open: this.streams.size };
   }
 
   // ---- small storage helpers ----------------------------------------------------------------
@@ -489,6 +533,7 @@ export class TenantHub extends DurableObject<Env> {
           applied: applied ? JSON.parse(applied) : null,
         },
         nbi: h.nodes.map((n) => ({ node: n.node, host: n.host, fresh: n.fresh, ...(n.probe ?? {}) })),
+        hub: this.hubInfo(),
         recent_events: this.recentEvents(20),
       }),
     };
@@ -727,6 +772,7 @@ export class TenantHub extends DurableObject<Env> {
 
   private dropStream(w: WritableStreamDefaultWriter<Uint8Array>): void {
     if (!this.streams.delete(w)) return;
+    this.markStreams();
     w.abort().catch(() => {});
     if (!this.streams.size && this.keepalive) {
       clearInterval(this.keepalive);
@@ -739,7 +785,7 @@ export class TenantHub extends DurableObject<Env> {
   }
 
   private closeStream(w: WritableStreamDefaultWriter<Uint8Array>): void {
-    this.streams.delete(w);
+    if (this.streams.delete(w)) this.markStreams();
     w.close().catch(() => {});
     if (!this.streams.size && this.keepalive) {
       clearInterval(this.keepalive);
@@ -780,7 +826,8 @@ export class TenantHub extends DurableObject<Env> {
     const w = writable.getWriter();
     const enc = new TextEncoder();
     this.lastSeq = Math.max(this.lastSeq, this.maxSeq());
-    this.write(w, enc.encode(`retry: 3000\nid: ${this.lastSeq}\n\n`));
+    // A comment line (ignored by EventSource) names the instance, then the data-less id frame.
+    this.write(w, enc.encode(`: instance=${this.instance} booted_at=${nowIso(this.bootedAt)}\nretry: 3000\nid: ${this.lastSeq}\n\n`));
     const from = lastEventId !== null && /^\d{1,15}$/.test(lastEventId.trim()) ? Number(lastEventId.trim()) : null;
     if (from !== null) {
       // Synchronous read + register: no event can land between the replay and going live.
@@ -792,6 +839,7 @@ export class TenantHub extends DurableObject<Env> {
       }
     }
     this.streams.set(w, Date.now());
+    this.markStreams();
     w.closed.catch(() => {}).finally(() => this.dropStream(w));
     if (!this.keepalive) this.keepalive = setInterval(() => this.streamTick(), KEEPALIVE_MS);
     return new Response(readable, {
@@ -842,6 +890,7 @@ export class TenantHub extends DurableObject<Env> {
     return JSON.stringify({
       events: page.map((r) => ({ seq: r.seq, ...JSON.parse(r.json) })),
       next_cursor: rows.length > limit ? String(page[page.length - 1].seq) : null,
+      head_seq: this.maxSeq(),
     });
   }
 
