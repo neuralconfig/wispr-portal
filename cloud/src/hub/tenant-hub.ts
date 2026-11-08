@@ -21,6 +21,9 @@ const DEBUG_RETENTION_MS = 7 * 24 * 3600 * 1000;
 const IDLE_ALARM_MS = 3600 * 1000;
 const MAX_STREAMS = 25;
 const KEEPALIVE_MS = 15_000;
+// Streams end after this long (clients reconnect with Last-Event-ID): a backstop for an instance that
+// lingers after a deploy and would otherwise send keep-alives but no events.
+const STREAM_MAX_MS = 15 * 60_000;
 const QUERY_MAX = 1000;
 // Fields kept out of the stream; masked copies go to debug_exchanges (plan: "Guest flow" step 2).
 const STREAM_STRIP = ["body", "reply"];
@@ -99,7 +102,8 @@ export class TenantHub extends DurableObject<Env> {
   private pending = new Map<string, Pending>();
   private nextId = 1;
   private tenant: Tenant = tenantConfig;
-  private streams = new Set<WritableStreamDefaultWriter<Uint8Array>>();
+  private streams = new Map<WritableStreamDefaultWriter<Uint8Array>, number>(); // writer -> opened at (ms)
+  private lastSeq = 0;
   private keepalive: ReturnType<typeof setInterval> | null = null;
   private inflight = new Map<string, Promise<PageResult>>();
   private hits = new Map<string, number[]>();
@@ -149,6 +153,7 @@ export class TenantHub extends DurableObject<Env> {
         JSON.stringify(record),
       )
       .one();
+    this.lastSeq = row.seq;
     this.publish(row.seq, record);
     return row.seq;
   }
@@ -713,7 +718,7 @@ export class TenantHub extends DurableObject<Env> {
   private publish(seq: number, record: Record<string, unknown>): void {
     if (!this.streams.size) return;
     const frame = new TextEncoder().encode(`id: ${seq}\ndata: ${JSON.stringify(record)}\n\n`);
-    for (const w of this.streams) this.write(w, frame);
+    for (const w of this.streams.keys()) this.write(w, frame);
   }
 
   private write(w: WritableStreamDefaultWriter<Uint8Array>, chunk: Uint8Array): void {
@@ -729,7 +734,41 @@ export class TenantHub extends DurableObject<Env> {
     }
   }
 
-  /** SSE: live only, unless Last-Event-ID asks for a replay from that seq first. */
+  private maxSeq(): number {
+    return this.sql.exec<{ m: number | null }>(`SELECT max(seq) AS m FROM events`).one().m ?? 0;
+  }
+
+  private closeStream(w: WritableStreamDefaultWriter<Uint8Array>): void {
+    this.streams.delete(w);
+    w.close().catch(() => {});
+    if (!this.streams.size && this.keepalive) {
+      clearInterval(this.keepalive);
+      this.keepalive = null;
+    }
+  }
+
+  /** Every keep-alive: send the beat, end old streams, and end all of them if this instance is stale
+   *  (another instance has appended events, or storage is gone), so clients reconnect to the live one. */
+  streamTick(now = Date.now()): { closed: number; stale: boolean } {
+    let stale = false;
+    try {
+      stale = this.maxSeq() > this.lastSeq;
+    } catch {
+      stale = true;
+    }
+    let closed = 0;
+    const beat = new TextEncoder().encode(": keep-alive\n\n");
+    for (const [w, opened] of [...this.streams]) {
+      if (stale || now - opened >= STREAM_MAX_MS) {
+        this.closeStream(w);
+        closed++;
+      } else this.write(w, beat);
+    }
+    return { closed, stale };
+  }
+
+  /** SSE: live only, unless Last-Event-ID asks for a replay from that seq first. The first frame
+   *  carries the current seq as an id, so a client that reconnects always has a Last-Event-ID. */
   private openStream(lastEventId: string | null): Response {
     if (this.streams.size >= MAX_STREAMS) {
       return new Response(JSON.stringify({ error: "too many event streams" }), {
@@ -740,7 +779,8 @@ export class TenantHub extends DurableObject<Env> {
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
     const w = writable.getWriter();
     const enc = new TextEncoder();
-    this.write(w, enc.encode("retry: 3000\n\n"));
+    this.lastSeq = Math.max(this.lastSeq, this.maxSeq());
+    this.write(w, enc.encode(`retry: 3000\nid: ${this.lastSeq}\n\n`));
     const from = lastEventId !== null && /^\d{1,15}$/.test(lastEventId.trim()) ? Number(lastEventId.trim()) : null;
     if (from !== null) {
       // Synchronous read + register: no event can land between the replay and going live.
@@ -751,14 +791,9 @@ export class TenantHub extends DurableObject<Env> {
         this.write(w, enc.encode(`id: ${r.seq}\ndata: ${r.json}\n\n`));
       }
     }
-    this.streams.add(w);
+    this.streams.set(w, Date.now());
     w.closed.catch(() => {}).finally(() => this.dropStream(w));
-    if (!this.keepalive) {
-      this.keepalive = setInterval(() => {
-        const beat = enc.encode(": keep-alive\n\n");
-        for (const s of this.streams) this.write(s, beat);
-      }, KEEPALIVE_MS);
-    }
+    if (!this.keepalive) this.keepalive = setInterval(() => this.streamTick(), KEEPALIVE_MS);
     return new Response(readable, {
       headers: {
         "Content-Type": "text/event-stream; charset=utf-8",
