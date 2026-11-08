@@ -1,0 +1,25 @@
+// M0 placeholder Worker for the hosted WISPr portal (see the cloud-portal plan).
+// Hostnames (John, 2026-11-08): guest.lanpulse.com (demo) and guest-staging.lanpulse.com.
+// lanpulse.com is a live zone: deploying with custom_domain creates ONLY these records.
+// Nothing here is deployed without John's go-ahead.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wispr-portal",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  "workers_dev": false,
+  "env": {
+    "staging": {
+      "name": "wispr-portal-staging",
+      "vars": { "ENVIRONMENT": "staging" },
+      "routes": [{ "pattern": "guest-staging.lanpulse.com", "custom_domain": true }]
+    },
+    "production": {
+      "name": "wispr-portal-production",
+      "vars": { "ENVIRONMENT": "production" },
+      "routes": [{ "pattern": "guest.lanpulse.com", "custom_domain": true }]
+    }
+  },
+  "vars": { "ENVIRONMENT": "dev" }
+}
