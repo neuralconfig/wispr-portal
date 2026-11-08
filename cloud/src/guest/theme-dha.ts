@@ -19,6 +19,9 @@ export interface DhaBrand {
   /** /static/dha/... path of an approved logo, or null for the text wordmark. */
   logo: string | null;
   helpText: string;
+  /** Session limits as set on the controller (SZ hotspot profile: grace period / session timeout), in minutes. */
+  idleMinutes: number;
+  sessionMinutes: number;
   supportFooter: boolean;
   host: string;
 }
@@ -52,8 +55,22 @@ function blocks(text: string, level: number, dropFirstHeading = false): string {
     .join("");
 }
 
-const TERMS_HTML = blocks(dhaTermsText, 3);
 const NOTICE_HTML = blocks(noticeText, 3, true);
+
+function duration(min: number): string {
+  if (min % 60 === 0) return min === 60 ? "1 hour" : `${min / 60} hours`;
+  return min === 1 ? "1 minute" : `${min} minutes`;
+}
+
+/** "after 5 minutes without use and after 1 hour in total": the controller's limits, never a guess. */
+export function limits(b: DhaBrand): string {
+  return `after ${duration(b.idleMinutes)} without use and after ${duration(b.sessionMinutes)} in total`;
+}
+
+/** Copy with {LIMITS} filled in for this tenant. */
+function copy(text: string, b: DhaBrand): string {
+  return text.replaceAll("{LIMITS}", limits(b));
+}
 
 function utcHhmm(d = new Date()): string {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
@@ -160,11 +177,11 @@ export function termsPage(b: DhaBrand, ref: string, csrf: string, back: string |
         <li>This is a public network and it is not encrypted end to end. Only send health, password or payment
           information on secure (https) sites.</li>
         <li>Use it lawfully. Content is filtered, and access can be limited or ended at any time.</li>
-        <li>Sessions end after 30 minutes without use and after about 8 hours. Then accept again to reconnect.</li>
+        <li>Sessions end ${e(limits(b))}. Then accept again to reconnect.</li>
       </ul>
       <details class="more">
         <summary>Read the full terms of use</summary>
-        <div class="more__body">${TERMS_HTML}</div>
+        <div class="more__body">${blocks(copy(dhaTermsText, b), 3)}</div>
       </details>
     </section>
 
@@ -206,8 +223,7 @@ export function successPage(b: DhaBrand, ref: string, target: string | null, del
     ${OK_ICON}
     <h1 id="ok-title" tabindex="-1">You are connected</h1>
     <p class="lead">Your device is online. Thank you for using guest Wi-Fi at ${e(b.facility)}.</p>
-    <p class="hint">Your session ends after 30 minutes without use and after about 8 hours. Then open any web page
-      to accept again.</p>
+    <p class="hint">Your session ends ${e(limits(b))}. Then open any web page to accept again.</p>
     ${
       target
         ? `<p>We will take you to your page in <span id="countdown" data-seconds="${delay}">${delay} second${delay === 1 ? "" : "s"}</span>.</p>
@@ -246,6 +262,6 @@ export function infoPage(b: DhaBrand, page: InfoPage, back: string | null): stri
       href ? `<a href="${e(href)}">Back to sign-in</a>` : "To sign in, open any web page."
     }</p>
     <h1 id="info-title">${e(p.title)}</h1>
-    <div class="info">${blocks(p.text, 2)}</div>`,
+    <div class="info">${blocks(copy(p.text, b), 2)}</div>`,
   });
 }

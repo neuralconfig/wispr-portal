@@ -25,7 +25,7 @@
   "probe_interval_s": 30,
   "reconnect_grace_s": 20,
   "portal": {
-    "theme": "lab",
+    "theme": "dha",
     "facility": "Demo Medical Center",
     "welcome": "Free guest Wi-Fi is available to patients, visitors and families. Please read the terms below and select \u201cI agree\u201d to connect.",
     "help_text": "If you need help, please ask at the information desk.",
@@ -44,7 +44,9 @@
       "agree_label": "Accept",
       "dod_notice": true,
       "logo": null,
-      "help_text": "Need help? Please ask at the information desk."
+      "help_text": "Need help? Please ask at the information desk.",
+      "idle_minutes": 5,
+      "session_minutes": 60
     }
   }
 }

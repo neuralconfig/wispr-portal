@@ -8,7 +8,7 @@ Wait a few seconds and open a web page. If it still does not work, disconnect fr
 
 # I was disconnected
 
-Sessions end after 30 minutes without use and after about 8 hours in total. Open any web page to accept the terms again.
+Sessions end {LIMITS}. Open any web page to accept the terms again.
 
 # Still stuck?
 

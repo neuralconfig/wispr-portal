@@ -60,6 +60,8 @@ function dhaBrand(env: Env): dha.DhaBrand {
     dodNotice: p.dha.dod_notice,
     logo: p.dha.logo,
     helpText: p.dha.help_text,
+    idleMinutes: p.dha.idle_minutes,
+    sessionMinutes: p.dha.session_minutes,
     supportFooter: p.support_footer,
     host: env.GUEST_HOST,
   };

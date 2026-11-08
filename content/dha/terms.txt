@@ -4,7 +4,7 @@ Guest Wi-Fi is a free courtesy service for patients, visitors and families. It i
 
 # Sessions
 
-Your session ends after 30 minutes without use and after about 8 hours in total. To keep using guest Wi-Fi after that, open any web page and accept these terms again. Access may be limited in time or speed, or ended at any time without notice.
+Your session ends {LIMITS}. To keep using guest Wi-Fi after that, open any web page and accept these terms again. Access may be limited in time or speed, or ended at any time without notice.
 
 # Acceptable use
 

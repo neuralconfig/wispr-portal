@@ -1,7 +1,7 @@
 import { SELF } from "cloudflare:test";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetAllowCache } from "../src/guest/allow";
-import { type DhaBrand, errorPage, infoPage, successPage, termsPage } from "../src/guest/theme-dha";
+import { type DhaBrand, errorPage, infoPage, limits, successPage, termsPage } from "../src/guest/theme-dha";
 import { connectFake, E, LAB_IP, settle } from "./helpers";
 
 const B: DhaBrand = {
@@ -12,6 +12,8 @@ const B: DhaBrand = {
   dodNotice: true,
   logo: null,
   helpText: "Need help? Please ask at the information desk.",
+  idleMinutes: 5,
+  sessionMinutes: 60,
   supportFooter: true,
   host: "guest.test",
 };
@@ -28,7 +30,10 @@ describe("DHA theme pages", () => {
     expect(html).toContain("<summary>Read the full notice and consent</summary>");
     expect(html).toContain("The USG routinely intercepts and monitors communications"); // verbatim notice
     expect(html).toContain("<summary>Read the full terms of use</summary>");
-    expect(html).toContain("30 minutes without use and after about 8 hours");
+    expect(html).toContain("Sessions end after 5 minutes without use and after 1 hour in total.");
+    expect(html).toContain("Your session ends after 5 minutes without use and after 1 hour in total.");
+    expect(html).not.toContain("{LIMITS}");
+    expect(limits({ ...B, idleMinutes: 30, sessionMinutes: 480 })).toBe("after 30 minutes without use and after 8 hours in total");
     expect(html).toContain("Emergency? Call 911 or tell any staff member.");
     expect(html).toMatch(/Reference <span>75S5-GPMR<\/span> · guest\.test · \d\d:\d\d UTC/);
     expect(html).toContain(`href="/privacy?return=uip%3D10.7.39.103%26client_mac%3D02%253AAF"`);
@@ -67,6 +72,7 @@ describe("DHA theme pages", () => {
     expect(infoPage(B, "help", null)).toContain("To sign in, open any web page.");
     expect(infoPage(B, "help", "x".repeat(2001))).not.toContain("Back to sign-in");
     expect(infoPage(B, "accessibility", null)).toContain("WCAG");
+    expect(infoPage(B, "help", null)).toContain("Sessions end after 5 minutes without use and after 1 hour in total.");
   });
 });
 
@@ -112,5 +118,33 @@ describe("DHA theme through the Worker (PORTAL_THEME=dha)", () => {
     expect(await res.text()).toContain(`<a href="/?uip=10.7.39.31">Back to sign-in</a>`);
     expect((await get("/help")).status).toBe(200);
     expect((await SELF.fetch("https://guest.test/help", { headers: { "CF-Connecting-IP": "198.51.100.1" } })).status).toBe(403);
+  });
+});
+
+describe("lab theme stays available as the rollback (PORTAL_THEME=lab)", () => {
+  let fake: Awaited<ReturnType<typeof connectFake>> | null = null;
+  beforeAll(() => {
+    E.PORTAL_THEME = "lab";
+  });
+  afterAll(() => {
+    delete E.PORTAL_THEME;
+  });
+  beforeEach(async () => {
+    fake = await connectFake();
+    await settle();
+    resetAllowCache();
+  });
+  afterEach(async () => {
+    fake?.ws?.close(1000, "test done");
+    fake = null;
+    await settle();
+  });
+
+  it("renders the lab terms page and has no info pages", async () => {
+    const get = (path: string) => SELF.fetch(`https://guest.test${path}`, { headers: { "CF-Connecting-IP": LAB_IP } });
+    const html = await (await get("/?client_mac=02:00:00:00:00:32&uip=10.7.39.32&nbiIP=192.168.37.6")).text();
+    expect(html).toContain(`href="/static/css/customer.css"`);
+    expect(html).toContain(`<span class="button__label">I agree, connect me</span>`);
+    expect((await get("/privacy")).status).toBe(404);
   });
 });
