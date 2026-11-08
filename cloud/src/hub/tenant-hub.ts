@@ -6,6 +6,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { Env } from "../env";
 import tenantConfig from "../../tenants/dha.json";
 import { csrfOk, newCsrf, newRef, REF_RE } from "../guest/security";
+import { sha256Hex } from "../net";
 import type { RedirectParams } from "../guest/params";
 import { safeHttpUrl } from "../guest/params";
 
@@ -31,6 +32,8 @@ interface Attachment {
   connectedAt: string;
   hello?: { version?: string; env?: string; ceiling?: unknown };
   applied?: Record<string, unknown>;
+  /** SHA-256 of the last config sent on this socket (secrets included, so it is never stored in clear). */
+  configHash?: string;
 }
 
 interface Probe {
@@ -216,7 +219,7 @@ export class TenantHub extends DurableObject<Env> {
           ws.close(4002, "unsupported protocol");
           return;
         }
-        if (!this.sendConfig(ws)) {
+        if (!(await this.sendConfig(ws))) {
           this.appendEvent("connector_error", { error: "SZ_NBI_PASSWORD secret is not set" });
           ws.send(JSON.stringify({ type: "config_unavailable" }));
           // A secret update does not drop a hibernated socket: retry from the alarm.
@@ -286,11 +289,31 @@ export class TenantHub extends DurableObject<Env> {
   }
 
   /** Push the NBI config to a socket; false when the hub has no NBI password yet. */
-  private sendConfig(ws: WebSocket): boolean {
+  private async sendConfig(ws: WebSocket): Promise<boolean> {
     const config = this.nbiConfig();
     if (!config) return false;
-    ws.send(JSON.stringify({ type: "config", config }));
+    const text = JSON.stringify({ type: "config", config });
+    ws.send(text);
+    const att = ws.deserializeAttachment() as Attachment | null;
+    if (att) {
+      att.configHash = await sha256Hex(text);
+      ws.serializeAttachment(att);
+    }
     return true;
+  }
+
+  /** Re-push when a secret or the tenant config changed: sockets outlive deploys and secret updates. */
+  private async refreshConfig(): Promise<void> {
+    const config = this.nbiConfig();
+    if (!config) return;
+    const hash = await sha256Hex(JSON.stringify({ type: "config", config }));
+    for (const ws of this.sockets()) {
+      const a = ws.deserializeAttachment() as Attachment | null;
+      if (a?.applied && a.configHash !== hash && ws.readyState === WebSocket.OPEN) {
+        this.appendEvent("connector_config_refresh", { reason: a.configHash ? "config changed" : "config hash unknown" });
+        await this.sendConfig(ws);
+      }
+    }
   }
 
   private nbiConfig(): Record<string, unknown> | null {
@@ -325,8 +348,9 @@ export class TenantHub extends DurableObject<Env> {
       // Sockets that said hello but have no config yet (e.g. the secret was missing): retry the push.
       for (const ws of this.sockets()) {
         const a = ws.deserializeAttachment() as Attachment | null;
-        if (a?.hello && !a.applied && ws.readyState === WebSocket.OPEN) this.sendConfig(ws);
+        if (a?.hello && !a.applied && ws.readyState === WebSocket.OPEN) await this.sendConfig(ws);
       }
+      await this.refreshConfig();
       if (this.readySocket()) {
         for (const host of this.tenant.nbi.hosts) {
           await this.probeOne(host);

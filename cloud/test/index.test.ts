@@ -32,6 +32,16 @@ describe("connector endpoint", () => {
     c.ws!.close(1000, "done");
   });
 
+  it("re-pushes the config only when it changed", async () => {
+    const c = await connectFake();
+    await handshake(c);
+    await settle();
+    expect(await runDurableObjectAlarm(hubStub())).toBe(true);
+    await settle();
+    expect(c.received.filter((m) => m.type === "config")).toHaveLength(0);
+    c.ws!.close(1000, "done");
+  });
+
   it("refuses an unknown protocol version", async () => {
     const c = await connectFake();
     const closed = new Promise<number>((r) => c.ws!.addEventListener("close", (e) => r(e.code)));
