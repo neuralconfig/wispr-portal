@@ -1,0 +1,823 @@
+{
+ "_comment": "Generated from wispr/params.py; checked by tests/test_unit.py and cloud/test/params.test.ts. Regenerate only when params.py changes on purpose.",
+ "vectors": [
+  {
+   "query": "nbiIP=192.168.37.6&client_mac=02:AF:A2:20:A0:79&domain_name=Administration%20Domain&reason=Un-Auth-Captive&wlanName=DHA-GUEST-PORTAL&dn=scg.ruckuswireless.com&ssid=DHA-GUEST-PORTAL&mac=ac:de:01:37:dc:d0&url=http%3A%2F%2Fneverssl.com%2F&proxy=0&vlan=739&wlan=9&sip=scg.ruckuswireless.com&zoneName=qu1x6KrwJZcHLxNBTafeAQ_1794083101830&apip=192.168.37.99&sshTunnelStatus=1&uip=10.7.39.103&StartURL=https%3A%2F%2Fwww.health.mil%2F",
+   "expect": {
+    "values": {
+     "nbiIP": "192.168.37.6",
+     "client_mac": "02:AF:A2:20:A0:79",
+     "domain_name": "Administration Domain",
+     "reason": "Un-Auth-Captive",
+     "wlanName": "DHA-GUEST-PORTAL",
+     "dn": "scg.ruckuswireless.com",
+     "ssid": "DHA-GUEST-PORTAL",
+     "mac": "ac:de:01:37:dc:d0",
+     "url": "http://neverssl.com/",
+     "proxy": "0",
+     "vlan": "739",
+     "wlan": "9",
+     "sip": "scg.ruckuswireless.com",
+     "zoneName": "qu1x6KrwJZcHLxNBTafeAQ_1794083101830",
+     "apip": "192.168.37.99",
+     "sshTunnelStatus": "1",
+     "uip": "10.7.39.103",
+     "startUrl": "https://www.health.mil/"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {
+     "startUrl": "StartURL"
+    },
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=10.7.39.5",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "uip": "10.7.39.5"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=aabb.cc00.1122&uip=10.7.39.5",
+   "expect": {
+    "values": {
+     "client_mac": "aabb.cc00.1122",
+     "uip": "10.7.39.5"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AABBCC001122",
+   "expect": {
+    "values": {
+     "client_mac": "AABBCC001122"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA-BB-CC-00-11-22",
+   "expect": {
+    "values": {
+     "client_mac": "AA-BB-CC-00-11-22"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB-CC:00:11:22",
+   "expect": {
+    "values": {},
+    "unknown": {},
+    "rejected": {
+     "client_mac": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": false
+   }
+  },
+  {
+   "query": "client_mac=ENC0123456789abcdef&uip=ENCdeadbeefdeadbeef",
+   "expect": {
+    "values": {
+     "client_mac": "ENC0123456789abcdef",
+     "uip": "ENCdeadbeefdeadbeef"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=ENC0123",
+   "expect": {
+    "values": {},
+    "unknown": {},
+    "rejected": {
+     "client_mac": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": false
+   }
+  },
+  {
+   "query": "uip=10.7.39.5",
+   "expect": {
+    "values": {
+     "uip": "10.7.39.5"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [
+     "client_mac"
+    ],
+    "aliases": {},
+    "ok": false
+   }
+  },
+  {
+   "query": "",
+   "expect": {
+    "values": {},
+    "unknown": {},
+    "rejected": {},
+    "missing": [
+     "client_mac"
+    ],
+    "aliases": {},
+    "ok": false
+   }
+  },
+  {
+   "query": "client_mac=",
+   "expect": {
+    "values": {},
+    "unknown": {},
+    "rejected": {},
+    "missing": [
+     "client_mac"
+    ],
+    "aliases": {},
+    "ok": false
+   }
+  },
+  {
+   "query": "client_mac=%20AA:BB:CC:00:11:22%20",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&client_mac=AA:BB:CC:00:11:23",
+   "expect": {
+    "values": {},
+    "unknown": {},
+    "rejected": {
+     "client_mac": "repeated parameter"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": false
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&startUrl=https://a.example/&StartURL=https://b.example/",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "startUrl": "repeated parameter"
+    },
+    "missing": [],
+    "aliases": {
+     "startUrl": "StartURL"
+    },
+    "ok": true
+   }
+  },
+  {
+   "query": "CLIENT_MAC=AA:BB:CC:00:11:22&UIP=10.7.39.5",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "uip": "10.7.39.5"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {
+     "client_mac": "CLIENT_MAC",
+     "uip": "UIP"
+    },
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=010.7.39.5",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "uip": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=10.7.39.256",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "uip": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=fd00::5",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "uip": "fd00::5"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=::ffff:10.7.39.5",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "uip": "::ffff:10.7.39.5"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=1:2:3:4:5:6:7:8:9",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "uip": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=fe80::1%25eth0",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "uip": "fe80::1%eth0"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIP=https://192.168.37.6:9443/portalintf",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "nbiIP": "https://192.168.37.6:9443/portalintf"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIP=192.168.37.6:9443",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "nbiIP": "192.168.37.6:9443"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIP=[fd00::6]",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "nbiIP": "[fd00::6]"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIP=ftp://x/",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "nbiIP": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIP=https://u:p@host/",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "nbiIP": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIP=-bad.example",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "nbiIP": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIP=SCG.Example.COM.",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "nbiIP": "SCG.Example.COM."
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=javascript:alert(1)",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "url": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=//evil.example/",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "url": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=https://user@evil.example/",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "url": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=http://a.example/x%0Ay",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "url": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=https://[fd00::1]:8443/p?q=1",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "url": "https://[fd00::1]:8443/p?q=1"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=https://[fd00::1/",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "url": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=HTTPS://A.example/",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "url": "HTTPS://A.example/"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&url=https://",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "url": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&vlan=4094&wlan=1000000",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "vlan": "4094",
+     "wlan": "1000000"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&vlan=4095&wlan=-1",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "vlan": "invalid format",
+     "wlan": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&vlan=+5",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "vlan": "5"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&proxy=2&sshTunnelStatus=1",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "sshTunnelStatus": "1"
+    },
+    "unknown": {},
+    "rejected": {
+     "proxy": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&reason=Un-Auth-SSL-Captive",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "reason": "Un-Auth-SSL-Captive"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&reason=1bad",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "reason": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&zoneName=abc%20def",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "zoneName": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&ssid=caf%C3%A9+wifi",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "ssid": "café wifi"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&ssid=a%01b",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "ssid": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&foo=bar&Baz=%01",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {
+     "foo": "bar",
+     "Baz": "(invalid)"
+    },
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&mac=ac:de:01:37:dc:d0&apip=192.168.37.99",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "mac": "ac:de:01:37:dc:d0",
+     "apip": "192.168.37.99"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&mac=ENC0123456789",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "mac": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&sip=scg.ruckuswireless.com&dn=_bad",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "sip": "scg.ruckuswireless.com"
+    },
+    "unknown": {},
+    "rejected": {
+     "dn": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&uip=",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&nbiIPv6=fd00::6",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22",
+     "nbiIPv6": "fd00::6"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&u0=v&u1=v&u2=v&u3=v&u4=v&u5=v&u6=v&u7=v&u8=v&u9=v&u10=v&u11=v&u12=v&u13=v&u14=v&u15=v&u16=v&u17=v&u18=v&u19=v&u20=v&u21=v&u22=v&u23=v&u24=v",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {
+     "u0": "v",
+     "u1": "v",
+     "u2": "v",
+     "u3": "v",
+     "u4": "v",
+     "u5": "v",
+     "u6": "v",
+     "u7": "v",
+     "u8": "v",
+     "u9": "v",
+     "u10": "v",
+     "u11": "v",
+     "u12": "v",
+     "u13": "v",
+     "u14": "v",
+     "u15": "v",
+     "u16": "v",
+     "u17": "v",
+     "u18": "v",
+     "u19": "v"
+    },
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=y",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {},
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  },
+  {
+   "query": "client_mac=AA:BB:CC:00:11:22&ssid=sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss",
+   "expect": {
+    "values": {
+     "client_mac": "AA:BB:CC:00:11:22"
+    },
+    "unknown": {},
+    "rejected": {
+     "ssid": "invalid format"
+    },
+    "missing": [],
+    "aliases": {},
+    "ok": true
+   }
+  }
+ ]
+}

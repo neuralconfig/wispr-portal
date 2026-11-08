@@ -1,58 +1,9 @@
-import { env, runDurableObjectAlarm, SELF } from "cloudflare:test";
+import { runDurableObjectAlarm, SELF } from "cloudflare:test";
+import { connectFake, handshake, hubStub, LAB_IP, settle, T } from "./helpers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetAllowCache } from "../src/guest/allow";
-import { newRef } from "../src/guest/placeholder";
-import type { Env } from "../src/env";
+import { newRef } from "../src/guest/security";
 import { ipAllowed } from "../src/net";
-
-const E = env as unknown as Env & { TEST_CONNECTOR_TOKEN: string; TEST_EVENTS_TOKEN: string };
-const T = E;
-const LAB_IP = "70.40.100.79";
-
-function hubStub() {
-  return E.HUB.get(E.HUB.idFromName("dha"));
-}
-
-/** A scripted fake connector on a real WebSocket to the hub. */
-async function connectFake(opts: { ip?: string; token?: string; probe?: (host: string) => object } = {}) {
-  const res = await SELF.fetch("https://connector.test/v1/connect", {
-    headers: {
-      Upgrade: "websocket",
-      Authorization: `Bearer ${opts.token ?? T.TEST_CONNECTOR_TOKEN}`,
-      "CF-Connecting-IP": opts.ip ?? LAB_IP,
-    },
-  });
-  const ws = res.webSocket;
-  if (!ws) return { res, ws: null, received: [] as any[], next: async () => null as any };
-  ws.accept();
-  const received: any[] = [];
-  const waiters: ((m: any) => void)[] = [];
-  ws.addEventListener("message", (e) => {
-    const msg = JSON.parse(e.data as string);
-    if (msg.type === "rpc" && msg.op === "probe") {
-      const result = opts.probe ? opts.probe(msg.args.host) : { reachable: true, code: 100, duration_ms: 80, tls: { version: "TLSv1.2" } };
-      ws.send(JSON.stringify({ type: "rpc_result", id: msg.id, ok: true, result: { host: msg.args.host, ...result } }));
-    }
-    const w = waiters.shift();
-    if (w) w(msg);
-    else received.push(msg);
-  });
-  const next = () =>
-    received.length ? Promise.resolve(received.shift()) : new Promise<any>((r) => waiters.push(r));
-  return { res, ws, received, next };
-}
-
-async function handshake(c: Awaited<ReturnType<typeof connectFake>>) {
-  c.ws!.send(JSON.stringify({ type: "hello", protocol: 1, version: "0.1.0", env: "test", ceiling: { hosts: [] } }));
-  const config = await c.next();
-  c.ws!.send(JSON.stringify({ type: "config_applied", hosts: config.config.hosts, ca_source: "local", pin: "bd09" }));
-  return config;
-}
-
-async function settle() {
-  // Let the hub process messages sent from the test side.
-  await new Promise((r) => setTimeout(r, 50));
-}
 
 beforeEach(() => resetAllowCache());
 
@@ -137,7 +88,7 @@ describe("guest allowlist", () => {
     resetAllowCache();
     const ok = await page(LAB_IP);
     expect(ok.status).toBe(200);
-    expect(await ok.text()).toContain("AA:BB:CC:00:11:22");
+    expect(await ok.text()).toContain(`id="accept-button" data-testid="accept"`);
     expect((await page("203.0.113.9")).status).toBe(403);
     expect((await SELF.fetch("https://guest.test/healthz", { headers: { "CF-Connecting-IP": "203.0.113.9" } })).status).not.toBe(403);
 

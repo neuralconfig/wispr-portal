@@ -6,6 +6,7 @@ export interface Env {
   API_HOST: string;
   CONNECTOR_HOST: string;
   HUB: DurableObjectNamespace<TenantHub>;
+  ASSETS: Fetcher;
   // Secrets (wrangler secret put … --env <env>). Token secrets hold the SHA-256 hex of the token.
   CONNECTOR_TOKEN_SHA256?: string;
   EVENTS_TOKEN_SHA256?: string;

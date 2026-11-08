@@ -1,0 +1,148 @@
+{
+ "_source": "DHA-Wi-Fi demo/tests/fixtures/r3/portal-events.jsonl (VM portal, R3 lab, 2026-11-07): the golden event shapes the hosted portal must match",
+ "events": [
+  {
+   "ts": "2026-11-07T20:25:02.071Z",
+   "event": "redirect_received",
+   "ref": "3EA7-MNWT",
+   "mode": "customer",
+   "client": "10.7.39.103",
+   "params": {
+    "nbiIP": "192.168.37.6",
+    "client_mac": "02:AF:A2:20:A0:79",
+    "domain_name": "Administration Domain",
+    "reason": "Un-Auth-Captive",
+    "wlanName": "DHA-GUEST-PORTAL",
+    "dn": "scg.ruckuswireless.com",
+    "ssid": "DHA-GUEST-PORTAL",
+    "mac": "ac:de:01:37:dc:d0",
+    "url": "http://neverssl.com/",
+    "proxy": "0",
+    "vlan": "739",
+    "wlan": "9",
+    "sip": "scg.ruckuswireless.com",
+    "zoneName": "qu1x6KrwJZcHLxNBTafeAQ_1794083101830",
+    "apip": "192.168.37.99",
+    "sshTunnelStatus": "1",
+    "uip": "10.7.39.103",
+    "startUrl": "https://www.health.mil/"
+   },
+   "unknown": {},
+   "rejected": {},
+   "missing": [],
+   "aliases": {
+    "startUrl": "StartURL"
+   },
+   "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0"
+  },
+  {
+   "ts": "2026-11-07T20:25:02.072Z",
+   "event": "terms_shown",
+   "ref": "3EA7-MNWT",
+   "mode": "customer",
+   "client": "10.7.39.103",
+   "facility": "Demo Medical Center"
+  },
+  {
+   "ts": "2026-11-07T20:25:19.645Z",
+   "event": "accept_received",
+   "ref": "3EA7-MNWT",
+   "mode": "customer",
+   "client": "10.7.39.103",
+   "via": "form"
+  },
+  {
+   "ts": "2026-11-07T20:25:20.212Z",
+   "event": "nbi_request",
+   "ref": "3EA7-MNWT",
+   "backend": "smartzone",
+   "request_type": "Login",
+   "nbi_host": "192.168.37.6",
+   "url": "https://192.168.37.6:9443/portalintf",
+   "sent_at": "2026-11-07T20:25:19.646Z",
+   "client_mac": "02:AF:A2:20:A0:79",
+   "uip": "10.7.39.103",
+   "body": {
+    "Vendor": "ruckus",
+    "RequestUserName": "dha-nbi",
+    "RequestPassword": "********",
+    "APIVersion": "1.0",
+    "RequestCategory": "UserOnlineControl",
+    "RequestType": "Login",
+    "UE-IP": "10.7.39.103",
+    "UE-MAC": "02:AF:A2:20:A0:79",
+    "UE-Proxy": "0",
+    "UE-Username": "dha-guest",
+    "UE-Password": "********"
+   }
+  },
+  {
+   "ts": "2026-11-07T20:25:20.213Z",
+   "event": "nbi_response",
+   "ref": "3EA7-MNWT",
+   "backend": "smartzone",
+   "request_type": "Login",
+   "nbi_host": "192.168.37.6",
+   "url": "https://192.168.37.6:9443/portalintf",
+   "http_status": 200,
+   "ResponseCode": 201,
+   "ReplyMessage": "Login succeeded",
+   "duration_ms": 565.8,
+   "tls": {
+    "version": "TLSv1.2",
+    "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+    "server_name": "scg.ruckuswireless.com",
+    "cert_sha256": "bd098ebcd93cb392ee7b00c5a2d5f2d5ccda4bf338c60b2aa313c7279da8a705"
+   },
+   "reply": {
+    "ResponseCode": 201,
+    "ReplyMessage": "Login succeeded",
+    "APIVersion": "1.0",
+    "Vendor": "Ruckus",
+    "UE-Username": "dha-guest",
+    "UE-MAC": "02:AF:A2:20:A0:79",
+    "UE-IP": "10.7.39.103",
+    "UE-Proxy": "0",
+    "SSID": "DHA-GUEST-PORTAL",
+    "AP-MAC": "AC:DE:01:37:DC:D0",
+    "GuestUser": "0",
+    "wsgWlanId": "9",
+    "zoneId": "2dc8254f-9970-4cd8-b708-d4fc570dd391",
+    "SmartClientMode": "none",
+    "SmartClientInfo": "",
+    "AuthenticationType": ""
+   }
+  },
+  {
+   "ts": "2026-11-07T20:25:20.213Z",
+   "event": "auth_result",
+   "ref": "3EA7-MNWT",
+   "backend": "smartzone",
+   "auth_method": "login",
+   "outcome": "authorized",
+   "ResponseCode": 201,
+   "ReplyMessage": "Login succeeded",
+   "nbi_calls": 1,
+   "total_ms": 566.6,
+   "client_mac": "02:AF:A2:20:A0:79",
+   "uip": "10.7.39.103"
+  },
+  {
+   "ts": "2026-11-07T20:25:20.213Z",
+   "event": "success_shown",
+   "ref": "3EA7-MNWT",
+   "mode": "customer",
+   "client": "10.7.39.103",
+   "outcome_ms": 566.6
+  },
+  {
+   "ts": "2026-11-07T20:25:20.213Z",
+   "event": "redirect_issued",
+   "ref": "3EA7-MNWT",
+   "mode": "customer",
+   "client": "10.7.39.103",
+   "target": "https://www.health.mil/",
+   "delay_s": 10
+  }
+ ]
+}

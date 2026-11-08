@@ -18,7 +18,7 @@ Every message is one JSON text frame.
 | C → H | `{"type":"config_applied",hosts,port,auth_method,server_name,pin,ca_source,ca_sha256,tls_max_version}` | What the connector actually applied (no secrets). The hub records a `connector_connected` event. |
 | C → H | `{"type":"config_rejected","error"}` | The config is outside the local ceiling, or the PEM is bad. Recorded as `connector_error`. |
 | H → C | `{"type":"rpc","id","op":"probe","args":{"host"}}` | Status for the dummy UE `02:00:00:00:00:00` against that one host. Sent only from the hub's alarm (every `probe_interval_s`). |
-| H → C | `{"type":"rpc","id","op":"accept","args":{"ref","params":{client_mac,uip,proxy,nbiIP}}}` | The click-through authorization (`wispr.flow.Authorizer.accept`). Hub side: M-b. |
+| H → C | `{"type":"rpc","id","op":"accept","args":{"ref","params":{client_mac,uip,proxy,nbiIP}}}` | The click-through authorization (`wispr.flow.Authorizer.accept`), one per visit: a double submit joins the running call and a resubmit after success never reaches the connector. |
 | C → H | `{"type":"rpc_result","id","ok":true,"result":{…}}` / `{"type":"rpc_result","id","ok":false,"error":"policy"\|"internal","detail"}` | The probe result `{host,reachable,code,message,http_status,duration_ms,tls,error_kind,error}`, or the accept result `{outcome,ok,code,message,total_ms,nbi_calls,nbi_host,tls,events[]}`. |
 | C → H | `{"type":"ping"}` (exact bytes) | Every `HEARTBEAT_S` (10 s). The hub's auto-response `{"type":"pong"}` doesn't wake it from hibernation. The connector reconnects if it gets no pong for 3.5 heartbeats. |
 
