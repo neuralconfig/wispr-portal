@@ -25,6 +25,7 @@ describe("connector endpoint", () => {
       port: 9443,
       request_username: "dha-nbi",
       request_password: "nbi-secret-test",
+      guest_password: "guest-secret-test",
       tls_server_name: "scg.ruckuswireless.com",
       guest_username: "dha-guest",
     });

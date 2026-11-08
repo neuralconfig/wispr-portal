@@ -129,7 +129,7 @@ def main() -> int:
     env_file = os.path.join(tmp, "dev.env")
     with open(env_file, "w") as fh:
         fh.write(f"CONNECTOR_TOKEN_SHA256={sha(ctoken)}\nEVENTS_TOKEN_SHA256={sha(etoken)}\n"
-                 f"SZ_NBI_PASSWORD=nbi-e2e-secret\nCONNECTOR_HOST=localhost\n"
+                 f"SZ_NBI_PASSWORD=nbi-e2e-secret\nSZ_GUEST_PASSWORD=guest-e2e-secret\nCONNECTOR_HOST=localhost\n"
                  f"TENANT_OVERRIDE='{json.dumps(override)}'\n")
 
     wport = free_port()
@@ -163,7 +163,8 @@ def main() -> int:
         detail = json.loads(text)
         check(code == 200 and detail["connector"]["applied"]["ca_source"] == "cloud", "token healthz: config applied from the cloud")
         check(detail["nbi"][0]["tls"]["cert_sha256"] != "", "token healthz: TLS details of the probe")
-        check("nbi-e2e-secret" not in text, "token healthz carries no NBI password")
+        check("nbi-e2e-secret" not in text and detail["secrets"] == {"nbi_password": True, "guest_password": True},
+              "token healthz: secrets set, no values")
         check(http(wport, "api.test", "/v1/tenants/dha/healthz")[0] == 401, "token healthz needs the token")
 
         local = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{hport}/healthz", timeout=5).read())
@@ -192,7 +193,8 @@ def main() -> int:
         check(code == 200 and 'id="ok-title"' in html, f"accept -> success page ({accept_ms:.0f} ms incl. Login)")
         logins = [r for r in state.requests if r.get("RequestType") == "Login"]
         check(len(logins) == 1 and logins[0].get("UE-MAC") == redirect["client_mac"]
-              and logins[0].get("UE-IP") == redirect["uip"], "exactly one Login reached the NBI for this guest")
+              and logins[0].get("UE-IP") == redirect["uip"]
+              and logins[0].get("UE-Password") == "guest-e2e-secret", "exactly one Login, with the tenant's guest password")
         check(post_form(wport, "guest.test", "/accept", {"ref": ref, "csrf": csrf})[0] == 200
               and len([r for r in state.requests if r.get("RequestType") == "Login"]) == 1,
               "a resubmit shows success again without a second Login")

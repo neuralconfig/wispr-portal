@@ -443,6 +443,11 @@ export class TenantHub extends DurableObject<Env> {
         version,
         mode: "customer",
         backend: this.tenant.backend,
+        // Which secrets are set (never their values): an unset guest password fails every Login.
+        secrets: {
+          nbi_password: !!this.env.SZ_NBI_PASSWORD,
+          guest_password: !!this.env.SZ_GUEST_PASSWORD || this.tenant.nbi.auth_method !== "login",
+        },
         connector: {
           connected: h.connected,
           in_grace: h.inGrace,
@@ -598,6 +603,16 @@ export class TenantHub extends DurableObject<Env> {
     const ref = v.ref;
     const ue = this.ue(v.params);
     this.appendEvent("accept_received", { ...base, via: "form", ...ue }, ref);
+    // Login needs the guest user's RADIUS password. Without the secret the connector would invent one
+    // and RADIUS would log a failed login, so refuse here and say why.
+    if (this.tenant.nbi.auth_method === "login" && !this.env.SZ_GUEST_PASSWORD) {
+      this.appendEvent(
+        "auth_result",
+        { backend: this.tenant.backend, outcome: "portal_config", error: "SZ_GUEST_PASSWORD secret is not set", ...ue },
+        ref,
+      );
+      return this.errorResult(ref, "portal_config", 502, base, retry);
+    }
     const t0 = Date.now();
     let reply: RpcReply;
     try {
