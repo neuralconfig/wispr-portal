@@ -1,0 +1,15 @@
+# The sign-in page did not appear
+
+Make sure you are connected to the guest Wi-Fi network, then open any web page. If nothing happens, turn Wi-Fi off and on again, or forget the network and reconnect.
+
+# I accepted, but I am not online
+
+Wait a few seconds and open a web page. If it still does not work, disconnect from the guest Wi-Fi, reconnect, and accept the terms again.
+
+# I was disconnected
+
+Sessions end after 30 minutes without use and after about 8 hours in total. Open any web page to accept the terms again.
+
+# Still stuck?
+
+Please ask at the information desk. If you give staff the reference shown at the bottom of the sign-in page, they can look up what happened. Staff cannot set up or repair personal devices.

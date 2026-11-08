@@ -1,0 +1,11 @@
+# Our commitment
+
+This sign-in page is designed to meet the Web Content Accessibility Guidelines (WCAG) 2.1, level AA, as required by Section 508 of the Rehabilitation Act.
+
+- It works with screen readers, keyboard-only navigation and browser zoom up to 400%.
+- It works without JavaScript and supports high-contrast (forced colors) modes.
+- Text and controls meet the minimum color contrast ratios.
+
+# Need help?
+
+If you have trouble using this page, or you need the terms in another format, please ask at the information desk. Staff can read the terms to you.

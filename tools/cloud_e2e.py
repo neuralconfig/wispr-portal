@@ -108,50 +108,92 @@ def check(cond: bool, what: str) -> None:
         raise SystemExit(1)
 
 
-def main() -> int:
-    tmp = tempfile.mkdtemp(prefix="cloud-e2e-")
-    ca = trustme.CA()
-    leaf = ca.issue_cert("127.0.0.1")
-    cert, key = os.path.join(tmp, "cert.pem"), os.path.join(tmp, "key.pem")
-    leaf.cert_chain_pems[0].write_to_path(cert)
-    leaf.private_key_pem.write_to_path(key)
-    ca_pem = ca.cert_pem.bytes().decode()
+class Stack:
+    """The local stack: fake NBI + wrangler dev, and (after start_connector) the real connector."""
 
-    state = fake_nbi.FakeNbiState(username="dha-nbi", password="nbi-e2e-secret", status_supported=True)
-    httpd, _ = fake_nbi.start(state, "127.0.0.1", 0, cert, key)
-    nbi_port = httpd.server_address[1]
+    def __init__(self, extra_env: dict[str, str] | None = None, prefix: str = "cloud-e2e-") -> None:
+        self.extra_env = extra_env or {}
+        self.prefix = prefix
+        self.connector: subprocess.Popen | None = None
+        self.wrangler: subprocess.Popen | None = None
+        self.httpd = None
 
-    ctoken, etoken = f"wpc_dha_{secrets.token_hex(16)}", f"wpe_dha_{secrets.token_hex(16)}"
-    sha = lambda s: hashlib.sha256(s.encode()).hexdigest()  # noqa: E731
-    override = {"nbi": {"hosts": ["127.0.0.1"], "port": nbi_port, "tls_server_name": None,
-                        "cert_sha256": None, "ca_pem": ca_pem, "timeout_s": 5},
-                "probe_interval_s": 2, "reconnect_grace_s": 2}
-    env_file = os.path.join(tmp, "dev.env")
-    with open(env_file, "w") as fh:
-        fh.write(f"CONNECTOR_TOKEN_SHA256={sha(ctoken)}\nEVENTS_TOKEN_SHA256={sha(etoken)}\n"
-                 f"SZ_NBI_PASSWORD=nbi-e2e-secret\nSZ_GUEST_PASSWORD=guest-e2e-secret\nCONNECTOR_HOST=localhost\n"
-                 f"TENANT_OVERRIDE='{json.dumps(override)}'\n")
+    def __enter__(self) -> "Stack":
+        self.tmp = tmp = tempfile.mkdtemp(prefix=self.prefix)
+        ca = trustme.CA()
+        leaf = ca.issue_cert("127.0.0.1")
+        cert, key = os.path.join(tmp, "cert.pem"), os.path.join(tmp, "key.pem")
+        leaf.cert_chain_pems[0].write_to_path(cert)
+        leaf.private_key_pem.write_to_path(key)
+        ca_pem = ca.cert_pem.bytes().decode()
 
-    wport = free_port()
-    wrangler = subprocess.Popen(
-        ["npx", "wrangler", "dev", "--port", str(wport), "--ip", "127.0.0.1", "--env-file", env_file,
-         "--persist-to", os.path.join(tmp, "state"), "--show-interactive-dev-session=false"],
-        cwd=os.path.join(ROOT, "cloud"), stdout=open(os.path.join(tmp, "wrangler.log"), "w"),
-        stderr=subprocess.STDOUT, start_new_session=True)
-    connector = None
-    try:
-        wait_for("wrangler dev", lambda: http(wport, "guest.test", "/healthz")[0] in (200, 503), 90)
-        check(http(wport, "guest.test", "/healthz")[0] == 503, "guest healthz is down before the connector")
+        state = fake_nbi.FakeNbiState(username="dha-nbi", password="nbi-e2e-secret", status_supported=True)
+        httpd, _ = fake_nbi.start(state, "127.0.0.1", 0, cert, key)
+        nbi_port = httpd.server_address[1]
 
+        ctoken, etoken = f"wpc_dha_{secrets.token_hex(16)}", f"wpe_dha_{secrets.token_hex(16)}"
+        sha = lambda s: hashlib.sha256(s.encode()).hexdigest()  # noqa: E731
+        override = {"nbi": {"hosts": ["127.0.0.1"], "port": nbi_port, "tls_server_name": None,
+                            "cert_sha256": None, "ca_pem": ca_pem, "timeout_s": 5},
+                    "probe_interval_s": 2, "reconnect_grace_s": 2}
+        env_file = os.path.join(tmp, "dev.env")
+        with open(env_file, "w") as fh:
+            fh.write(f"CONNECTOR_TOKEN_SHA256={sha(ctoken)}\nEVENTS_TOKEN_SHA256={sha(etoken)}\n"
+                     f"SZ_NBI_PASSWORD=nbi-e2e-secret\nSZ_GUEST_PASSWORD=guest-e2e-secret\nCONNECTOR_HOST=localhost\n"
+                     f"TENANT_OVERRIDE='{json.dumps(override)}'\n")
+            for k, v in self.extra_env.items():
+                fh.write(f"{k}={v}\n")
+
+        wport = free_port()
+        wrangler = subprocess.Popen(
+            ["npx", "wrangler", "dev", "--port", str(wport), "--ip", "127.0.0.1", "--env-file", env_file,
+             "--persist-to", os.path.join(tmp, "state"), "--show-interactive-dev-session=false"],
+            cwd=os.path.join(ROOT, "cloud"), stdout=open(os.path.join(tmp, "wrangler.log"), "w"),
+            stderr=subprocess.STDOUT, start_new_session=True)
+        self.wrangler = wrangler
+        self.state, self.httpd, self.nbi_port, self.wport = state, httpd, nbi_port, wport
+        self.ctoken, self.etoken = ctoken, etoken
+        self.guest_host = self.extra_env.get("GUEST_HOST", "guest.test")
+        try:
+            wait_for("wrangler dev", lambda: http(wport, self.guest_host, "/healthz")[0] in (200, 503), 90)
+        except BaseException:
+            self.__exit__()
+            raise
+        return self
+
+    def start_connector(self) -> int:
+        """Start the connector; returns its local healthz port."""
+        tmp, wport, nbi_port, ctoken = self.tmp, self.wport, self.nbi_port, self.ctoken
         hport = free_port()
         cenv = {**os.environ, "CONNECTOR_URL": f"ws://localhost:{wport}/v1/connect", "CONNECTOR_ALLOW_PLAINTEXT": "1",
                 "CONNECTOR_TOKEN": ctoken, "CONNECTOR_ENV": "e2e", "ALLOWED_NBI_HOSTS": "127.0.0.1",
                 "ALLOWED_NBI_PORT": str(nbi_port), "GUEST_CIDRS": "10.7.39.0/24",
                 "HEALTHZ_LISTEN": f"127.0.0.1:{hport}", "LOG_JSON_PATH": os.path.join(tmp, "connector.jsonl"),
                 "PYTHONPATH": ROOT}
-        connector = subprocess.Popen([sys.executable, "-m", "connector"], cwd=ROOT, env=cenv,
-                                     stdout=open(os.path.join(tmp, "connector.log"), "w"), stderr=subprocess.STDOUT)
+        self.connector = subprocess.Popen([sys.executable, "-m", "connector"], cwd=ROOT, env=cenv,
+                                          stdout=open(os.path.join(tmp, "connector.log"), "w"), stderr=subprocess.STDOUT)
+        self.hport = hport
+        wait_for("guest healthz ok", lambda: http(wport, self.guest_host, "/healthz")[0] == 200, 30)
+        return hport
 
+    def __exit__(self, *exc) -> None:
+        if self.connector:
+            self.connector.kill()
+        if self.wrangler:
+            try:
+                os.killpg(self.wrangler.pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                self.wrangler.terminate()
+        if self.httpd:
+            self.httpd.shutdown()
+        print(f"     logs: {self.tmp}")
+
+
+def main() -> int:
+    with Stack() as st:
+        wport, etoken, state, tmp = st.wport, st.etoken, st.state, st.tmp
+        check(http(wport, "guest.test", "/healthz")[0] == 503, "guest healthz is down before the connector")
+        hport = st.start_connector()
         body = wait_for("guest healthz ok", lambda: (lambda r: r[0] == 200 and json.loads(r[1]))(
             http(wport, "guest.test", "/healthz")), 30)
         check(body["connector"]["connected"] and body["nbi"][0]["reachable"], "connector connected, node1 reachable")
@@ -218,23 +260,14 @@ def main() -> int:
         log_text = open(os.path.join(tmp, "connector.jsonl")).read()
         check("nbi-e2e-secret" not in log_text and "nbi_probe" in log_text, "connector log: probes, no password")
 
-        connector.send_signal(signal.SIGTERM)
-        connector.wait(10)
-        connector = None
+        st.connector.send_signal(signal.SIGTERM)
+        st.connector.wait(10)
+        st.connector = None
         wait_for("guest healthz down after the connector stops",
                  lambda: http(wport, "guest.test", "/healthz")[0] == 503, 20)
         check(True, "guest healthz down after the connector stops")
         print("PASS")
         return 0
-    finally:
-        if connector:
-            connector.kill()
-        try:
-            os.killpg(wrangler.pid, signal.SIGTERM)
-        except (ProcessLookupError, PermissionError):
-            wrangler.terminate()
-        httpd.shutdown()
-        print(f"     logs: {tmp}")
 
 
 if __name__ == "__main__":

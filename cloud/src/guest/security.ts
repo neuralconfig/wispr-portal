@@ -33,7 +33,7 @@ export function escapeHtml(s: string): string {
 }
 
 export const CSP =
-  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; " +
+  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; " +
   "connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
 const COMMON: Record<string, string> = {

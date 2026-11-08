@@ -36,6 +36,15 @@
     "redirect_delay_s": 10,
     "visit_ttl_s": 1800,
     "rate_page_per_min": 300,
-    "rate_accept_per_min": 10
+    "rate_accept_per_min": 10,
+    "dha": {
+      "organization": "Defense Health Agency",
+      "facility": "Demo Medical Center",
+      "network": "Guest Wi-Fi",
+      "agree_label": "Accept",
+      "dod_notice": true,
+      "logo": null,
+      "help_text": "Need help? Please ask at the information desk."
+    }
   }
 }

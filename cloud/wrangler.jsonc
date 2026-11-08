@@ -29,6 +29,8 @@
       "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "TenantHub" }] },
       "vars": {
         "ENVIRONMENT": "staging",
+        // Preview of the DHA theme (M-d) on staging; production follows tenants/dha.json portal.theme.
+        "PORTAL_THEME": "dha",
         "GUEST_HOST": "guest-staging.lanpulse.com",
         "API_HOST": "guest-staging-api.lanpulse.com",
         "CONNECTOR_HOST": "guest-staging-connector.lanpulse.com"
