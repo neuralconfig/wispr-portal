@@ -7,6 +7,7 @@ import type { Env } from "./env";
 import { guestAllowed, hub, TENANT } from "./guest/allow";
 import { parseRedirect } from "./guest/params";
 import { respond, securityHeaders } from "./guest/security";
+import * as dha from "./guest/theme-dha";
 import { type Brand, errorPage, FRIENDLY, successPage, termsPage } from "./guest/theme-lab";
 import type { PageResult } from "./hub/tenant-hub";
 import tenantConfig from "../tenants/dha.json";
@@ -23,8 +24,15 @@ const MAX_FORM_BYTES = 16 * 1024;
 
 // Served without events or a ref: browsers and OSes ask for these on their own.
 const NOISE = /^\/(?:favicon\.ico|apple-touch-icon[^/]*\.png|\.well-known\/.*)$/;
-// Theme assets (Static Assets, directory ../static): only the customer theme's files.
-const STATIC = new Set(["/static/css/customer.css", "/static/js/customer.js"]);
+// Theme assets (Static Assets, directory ../static): only the customer themes' files.
+const LAB_ASSETS = ["/static/css/customer.css", "/static/js/customer.js"];
+const STATIC = new Set([...LAB_ASSETS, ...dha.DHA_ASSETS, ...(tenantConfig.portal.dha.logo ? [tenantConfig.portal.dha.logo] : [])]);
+const INFO_PAGES = new Set<string>(["privacy", "accessibility", "help"]);
+
+/** "lab" (the VM portal's look) or "dha". PORTAL_THEME (per env) wins over the tenant's portal.theme. */
+function theme(env: Env): "lab" | "dha" {
+  return (env.PORTAL_THEME || tenantConfig.portal.theme) === "dha" ? "dha" : "lab";
+}
 
 function json(body: unknown, status = 200): Response {
   return respond(JSON.stringify(body), JSON_TYPE, status);
@@ -42,9 +50,32 @@ function brand(env: Env): Brand {
   };
 }
 
-function render(env: Env, r: PageResult): Response {
-  const b = brand(env);
+function dhaBrand(env: Env): dha.DhaBrand {
+  const p = tenantConfig.portal;
+  return {
+    organization: p.dha.organization,
+    facility: p.dha.facility,
+    network: p.dha.network,
+    agreeLabel: p.dha.agree_label,
+    dodNotice: p.dha.dod_notice,
+    logo: p.dha.logo,
+    helpText: p.dha.help_text,
+    supportFooter: p.support_footer,
+    host: env.GUEST_HOST,
+  };
+}
+
+/** `back` is the visit's redirect query, for the DHA theme's footer links back to the sign-in page. */
+function render(env: Env, r: PageResult, back: string | null = null): Response {
   const headers = { "X-Request-Ref": r.ref };
+  if (theme(env) === "dha") {
+    const d = dhaBrand(env);
+    if (r.page === "terms") return respond(dha.termsPage(d, r.ref, r.csrf ?? "", back), HTML, r.status, headers);
+    if (r.page === "success") return respond(dha.successPage(d, r.ref, r.target ?? null, r.delay ?? 0), HTML, r.status, headers);
+    const [title, body] = FRIENDLY[r.kind ?? "server_error"] ?? FRIENDLY.server_error;
+    return respond(dha.errorPage(d, r.ref, title, body, r.retryUrl ?? null), HTML, r.status, headers);
+  }
+  const b = brand(env);
   if (r.page === "terms") return respond(termsPage(b, r.ref, r.csrf ?? ""), HTML, r.status, headers);
   if (r.page === "success") return respond(successPage(b, r.ref, r.target ?? null, r.delay ?? 0), HTML, r.status, headers);
   const [title, body] = FRIENDLY[r.kind ?? "server_error"] ?? FRIENDLY.server_error;
@@ -89,7 +120,7 @@ async function guest(request: Request, env: Env, url: URL): Promise<Response> {
       ipSeen: ip,
     });
     console.log(JSON.stringify({ event: "visit", ref: r.ref, page: r.page }));
-    return render(env, r);
+    return render(env, r, url.search.slice(1));
   }
   if (path === "/accept" && request.method === "POST") {
     let ref = "";
@@ -109,6 +140,11 @@ async function guest(request: Request, env: Env, url: URL): Promise<Response> {
     return render(env, r);
   }
   if (request.method === "POST") return respond("Method not allowed\n", TEXT, 405);
+  // DHA theme: Privacy / Accessibility / Help. Static text, no events; ?return= is the redirect query to go back to.
+  if (theme(env) === "dha" && INFO_PAGES.has(path.slice(1))) {
+    const back = url.searchParams.get("return");
+    return respond(dha.infoPage(dhaBrand(env), path.slice(1) as dha.InfoPage, back), HTML);
+  }
   const ref = await hub(env).noteRef("not_found_page", path, ip);
   return render(env, { page: "error", status: 404, ref, kind: "not_found_page" });
 }

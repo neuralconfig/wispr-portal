@@ -5,6 +5,8 @@ export interface Env {
   GUEST_HOST: string;
   API_HOST: string;
   CONNECTOR_HOST: string;
+  // Optional per-env theme ("lab" | "dha"), over the tenant's portal.theme. Lets staging preview a theme first.
+  PORTAL_THEME?: string;
   HUB: DurableObjectNamespace<TenantHub>;
   ASSETS: Fetcher;
   // Secrets (wrangler secret put … --env <env>). Token secrets hold the SHA-256 hex of the token.

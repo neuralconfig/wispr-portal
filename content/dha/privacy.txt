@@ -1,0 +1,21 @@
+# What we collect
+
+Guest Wi-Fi does not ask for your name, email address, phone number or any other personal information.
+
+To run the service and keep it secure, the network records:
+
+- your device's hardware (MAC) address and network (IP) address;
+- the times you connect, accept the terms and disconnect;
+- the wireless access point and network your device used.
+
+# Why
+
+These records are used only to operate the guest network, to troubleshoot problems you report, and to investigate misuse or security incidents.
+
+# How long
+
+Records are kept for up to 30 days, unless they are needed longer for a security investigation. This sign-in page sets no cookies and uses no analytics or advertising trackers.
+
+# Monitoring
+
+Guest Wi-Fi is a U.S. Government information system. Use is monitored and you have no expectation of privacy on it. See the notice on the sign-in page.

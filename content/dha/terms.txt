@@ -1,0 +1,31 @@
+# The service
+
+Guest Wi-Fi is a free courtesy service for patients, visitors and families. It is a shared, public network. It is not encrypted end to end, and you are responsible for protecting your own device and information. Do not send health, password or payment information except on secure (https) websites.
+
+# Sessions
+
+Your session ends after 30 minutes without use and after about 8 hours in total. To keep using guest Wi-Fi after that, open any web page and accept these terms again. Access may be limited in time or speed, or ended at any time without notice.
+
+# Acceptable use
+
+Use guest Wi-Fi lawfully and with respect for patients, staff and other guests. You agree that you will not use it to:
+
+- break any law or regulation, or infringe anyone's rights, including copyright;
+- access, store or share material that is obscene, threatening, harassing or hateful;
+- try to gain unauthorized access to any system, network or account, or interfere with this network or its users;
+- send spam, malware or other harmful content;
+- use so much bandwidth (for example large peer-to-peer transfers) that the service degrades for others.
+
+Content is filtered. Parents and guardians are responsible for supervising how minors in their care use the service.
+
+# No warranty
+
+The service is provided "as is", with no guarantee of availability, speed or security. The facility is not responsible for any loss of data, damage to your device, or other harm that results from using guest Wi-Fi. Staff cannot help set up or repair personal devices.
+
+# Information we collect
+
+We do not ask for your name, email or phone number. To run the service and keep it secure, the network records your device's hardware (MAC) address and network (IP) address and the times you connect and accept these terms. These records are kept for up to 30 days, unless they are needed longer for a security investigation.
+
+# Changes
+
+These terms may change at any time. The terms shown when you connect are the ones that apply to that session.
