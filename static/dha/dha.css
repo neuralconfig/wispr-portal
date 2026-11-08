@@ -9,7 +9,7 @@
 }
 
 :root {
-  --primary: #1B365D;       /* DHA navy: header, headings, button */
+  --primary: #1B365D;       /* DHA brand blue: header, headings, button */
   --primary-hover: #12263F;
   --link: #1D4F91;
   --ink: #1B1F24;
@@ -20,7 +20,7 @@
   --success: #1E6B34;
   --error: #A3172B;
   --focus: #2491FF;         /* on white */
-  --focus-dark: #FFBE2E;    /* on navy */
+  --focus-dark: #FFBE2E;    /* on the header blue */
   --rule-blue: #5A92CA;     /* decorative only: fails contrast as text */
   --rule-orange: #EA7425;   /* decorative only */
   color-scheme: light;
@@ -43,7 +43,7 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--focus); outlin
 }
 .skip:focus { top: 0.5rem; outline: 3px solid var(--focus-dark); }
 
-/* ---- header: flat navy band, text wordmark, decorative two-tone rule ---- */
+/* ---- header: flat DHA-blue band, text wordmark, decorative two-tone rule ---- */
 .hdr {
   background: var(--primary); color: #fff;
   border-bottom: 4px solid var(--rule-blue);
