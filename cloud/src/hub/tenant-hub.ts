@@ -164,13 +164,12 @@ export class TenantHub extends DurableObject<Env> {
           ws.close(4002, "unsupported protocol");
           return;
         }
-        const config = this.nbiConfig();
-        if (!config) {
+        if (!this.sendConfig(ws)) {
           this.appendEvent("connector_error", { error: "SZ_NBI_PASSWORD secret is not set" });
           ws.send(JSON.stringify({ type: "config_unavailable" }));
-          return;
+          // A secret update does not drop a hibernated socket: retry from the alarm.
+          await this.ctx.storage.setAlarm(Date.now() + 15_000);
         }
-        ws.send(JSON.stringify({ type: "config", config }));
         return;
       }
       case "config_applied": {
@@ -234,6 +233,14 @@ export class TenantHub extends DurableObject<Env> {
     }
   }
 
+  /** Push the NBI config to a socket; false when the hub has no NBI password yet. */
+  private sendConfig(ws: WebSocket): boolean {
+    const config = this.nbiConfig();
+    if (!config) return false;
+    ws.send(JSON.stringify({ type: "config", config }));
+    return true;
+  }
+
   private nbiConfig(): Record<string, unknown> | null {
     if (!this.env.SZ_NBI_PASSWORD) return null;
     return {
@@ -263,6 +270,11 @@ export class TenantHub extends DurableObject<Env> {
   // ---- probes (alarm only, one at a time, never per request) -----------------------------------
   async alarm(): Promise<void> {
     try {
+      // Sockets that said hello but have no config yet (e.g. the secret was missing): retry the push.
+      for (const ws of this.sockets()) {
+        const a = ws.deserializeAttachment() as Attachment | null;
+        if (a?.hello && !a.applied && ws.readyState === WebSocket.OPEN) this.sendConfig(ws);
+      }
       if (this.readySocket()) {
         for (const host of this.tenant.nbi.hosts) {
           await this.probeOne(host);
@@ -368,7 +380,7 @@ export class TenantHub extends DurableObject<Env> {
   /** Token healthz: adds hosts, codes, timings, TLS and the connector details. */
   tokenStatus(version: string): { httpStatus: number; json: string } {
     const h = this.healthCore();
-    const ws = this.readySocket();
+    const ws = this.readySocket() ?? this.sockets()[0] ?? null;
     const att = (ws?.deserializeAttachment() as Attachment | null) ?? null;
     const applied = this.kvGet("applied");
     return {
