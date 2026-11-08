@@ -44,7 +44,9 @@
       "agree_label": "Accept",
       "dod_notice": true,
       "logo": null,
-      "help_text": "Need help? Please ask at the information desk."
+      "help_text": "Need help? Please ask at the information desk.",
+      "idle_minutes": 5,
+      "session_minutes": 60
     }
   }
 }
