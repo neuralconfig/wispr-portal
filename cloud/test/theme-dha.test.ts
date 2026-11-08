@@ -114,3 +114,31 @@ describe("DHA theme through the Worker (PORTAL_THEME=dha)", () => {
     expect((await SELF.fetch("https://guest.test/help", { headers: { "CF-Connecting-IP": "198.51.100.1" } })).status).toBe(403);
   });
 });
+
+describe("lab theme stays available as the rollback (PORTAL_THEME=lab)", () => {
+  let fake: Awaited<ReturnType<typeof connectFake>> | null = null;
+  beforeAll(() => {
+    E.PORTAL_THEME = "lab";
+  });
+  afterAll(() => {
+    delete E.PORTAL_THEME;
+  });
+  beforeEach(async () => {
+    fake = await connectFake();
+    await settle();
+    resetAllowCache();
+  });
+  afterEach(async () => {
+    fake?.ws?.close(1000, "test done");
+    fake = null;
+    await settle();
+  });
+
+  it("renders the lab terms page and has no info pages", async () => {
+    const get = (path: string) => SELF.fetch(`https://guest.test${path}`, { headers: { "CF-Connecting-IP": LAB_IP } });
+    const html = await (await get("/?client_mac=02:00:00:00:00:32&uip=10.7.39.32&nbiIP=192.168.37.6")).text();
+    expect(html).toContain(`href="/static/css/customer.css"`);
+    expect(html).toContain(`<span class="button__label">I agree, connect me</span>`);
+    expect((await get("/privacy")).status).toBe(404);
+  });
+});
