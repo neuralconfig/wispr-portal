@@ -1,8 +1,9 @@
-import { SELF } from "cloudflare:test";
+import { runInDurableObject, SELF } from "cloudflare:test";
+import type { TenantHub } from "../src/hub/tenant-hub";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetAllowCache } from "../src/guest/allow";
 import fixture from "./fixtures/r3-portal-events.json";
-import { connectFake, handshake, LAB_IP, settle, T } from "./helpers";
+import { connectFake, handshake, hubStub, LAB_IP, settle, T } from "./helpers";
 
 // The redirect the R3 lab AP sent (fixture line 1), as a query string.
 const golden = fixture.events;
@@ -297,7 +298,7 @@ describe("events API", () => {
     await settle();
     const { ref } = form(await (await page()).text());
     const frames = await reading;
-    expect(frames[0].retry).toBe("retry: 3000");
+    expect(frames[0].retry).toMatch(/^retry: 3000\nid: \d+$/); // a Last-Event-ID even before any event
     const evs = frames.filter((f) => f.event);
     expect(evs.map((f) => f.event)).toEqual(["redirect_received", "terms_shown"]);
     expect(evs.every((f) => f.ref === ref)).toBe(true);
@@ -308,5 +309,33 @@ describe("events API", () => {
     });
     const again = (await readFrames(replay, (f) => f.filter((x) => x.event).length >= 2)).filter((f) => f.event);
     expect(again.slice(0, 2).map((f) => f.id)).toEqual([evs[0].id, evs[1].id]);
+  });
+
+  it("ends streams when the instance is stale (a deploy) or after 15 minutes, so clients reconnect", async () => {
+    const open = () => SELF.fetch("https://api.test/v1/tenants/dha/events/stream", { headers: AUTH });
+    const ended = async (res: Response) => {
+      const reader = res.body!.getReader();
+      for (;;) {
+        const r = await Promise.race([reader.read(), settle(1000).then(() => "timeout" as const)]);
+        if (r === "timeout") return false;
+        if (r.done) return true;
+      }
+    };
+    const a = await open();
+    await settle();
+    // Healthy tick: nothing closes.
+    expect(await runInDurableObject(hubStub(), (h: TenantHub) => h.streamTick())).toEqual({ closed: 0, stale: false });
+    // Another instance (the new version) appended an event this one never published.
+    await runInDurableObject(hubStub(), (_h: TenantHub, state) => {
+      state.storage.sql.exec(`INSERT INTO events (ts, ts_ms, ref, event, json) VALUES ('x', 0, NULL, 'probe', '{}')`);
+    });
+    expect(await runInDurableObject(hubStub(), (h: TenantHub) => h.streamTick())).toEqual({ closed: 1, stale: true });
+    expect(await ended(a)).toBe(true);
+
+    const b = await open();
+    await settle();
+    const r = await runInDurableObject(hubStub(), (h: TenantHub) => h.streamTick(Date.now() + 15 * 60_000));
+    expect(r.closed).toBe(1);
+    expect(await ended(b)).toBe(true);
   });
 });
