@@ -108,6 +108,8 @@ class NbiConfig:
     tls_server_name: str | None
     cert_sha256: str | None         # hex, no colons, lower-case
     tls_max_version: str | None     # None | "1.2" | "1.3"
+    ca_pem: str | None = None       # trust anchor as PEM text (the connector gets it from the cloud);
+                                    # used together with ca_bundle when both are set
 
 
 @dataclass(frozen=True)

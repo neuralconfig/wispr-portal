@@ -1,0 +1,58 @@
+// Hosted WISPr portal Worker (see the cloud-portal plan). Demo hostnames (John, 2026-11-08):
+//   production: guest / guest-api / guest-connector .lanpulse.com
+//   staging:    guest-staging / guest-staging-api / guest-staging-connector .lanpulse.com
+// lanpulse.com is a live zone: deploying with custom_domain creates ONLY these records.
+// Secrets per env (wrangler secret put NAME --env <env>): CONNECTOR_TOKEN_SHA256, EVENTS_TOKEN_SHA256,
+// SZ_NBI_PASSWORD, and optionally SZ_GUEST_PASSWORD.
+// Bindings are not inherited by envs, so durable_objects is repeated in each one.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wispr-portal",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  "workers_dev": false,
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TenantHub"] }],
+  "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "TenantHub" }] },
+  // Theme CSS/JS for the lab theme: the VM portal's own static/ folder. The Worker runs first on every
+  // request and serves only the files it lists (src/index.ts STATIC), behind the guest allowlist.
+  "assets": { "directory": "../static", "binding": "ASSETS", "run_worker_first": true },
+  "vars": {
+    "ENVIRONMENT": "dev",
+    "GUEST_HOST": "guest.test",
+    "API_HOST": "api.test",
+    "CONNECTOR_HOST": "connector.test"
+  },
+  "env": {
+    "staging": {
+      "name": "wispr-portal-staging",
+      "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "TenantHub" }] },
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "GUEST_HOST": "guest-staging.lanpulse.com",
+        "API_HOST": "guest-staging-api.lanpulse.com",
+        "CONNECTOR_HOST": "guest-staging-connector.lanpulse.com"
+      },
+      "routes": [
+        { "pattern": "guest-staging.lanpulse.com", "custom_domain": true },
+        { "pattern": "guest-staging-api.lanpulse.com", "custom_domain": true },
+        { "pattern": "guest-staging-connector.lanpulse.com", "custom_domain": true }
+      ]
+    },
+    "production": {
+      "name": "wispr-portal-production",
+      "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "TenantHub" }] },
+      "vars": {
+        "ENVIRONMENT": "production",
+        "GUEST_HOST": "guest.lanpulse.com",
+        "API_HOST": "guest-api.lanpulse.com",
+        "CONNECTOR_HOST": "guest-connector.lanpulse.com"
+      },
+      "routes": [
+        { "pattern": "guest.lanpulse.com", "custom_domain": true },
+        { "pattern": "guest-api.lanpulse.com", "custom_domain": true },
+        { "pattern": "guest-connector.lanpulse.com", "custom_domain": true }
+      ]
+    }
+  }
+}

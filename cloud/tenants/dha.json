@@ -1,0 +1,41 @@
+{
+  "id": "dha",
+  "backend": "smartzone",
+  "nbi": {
+    "hosts": [
+      "192.168.37.6",
+      "192.168.37.8"
+    ],
+    "port": 9443,
+    "path": "/portalintf",
+    "vendor": "ruckus",
+    "api_version": "1.0",
+    "request_username": "dha-nbi",
+    "auth_method": "login",
+    "guest_username": "dha-guest",
+    "status_supported": false,
+    "timeout_s": 20,
+    "connect_timeout_s": 3,
+    "tls_server_name": "scg.ruckuswireless.com",
+    "cert_sha256": "bd098ebcd93cb392ee7b00c5a2d5f2d5ccda4bf338c60b2aa313c7279da8a705",
+    "tls_max_version": null,
+    "ca_pem": null
+  },
+  "egress_cidrs": [],
+  "probe_interval_s": 30,
+  "reconnect_grace_s": 20,
+  "portal": {
+    "theme": "lab",
+    "facility": "Demo Medical Center",
+    "welcome": "Free guest Wi-Fi is available to patients, visitors and families. Please read the terms below and select \u201cI agree\u201d to connect.",
+    "help_text": "If you need help, please ask at the information desk.",
+    "agree_label": "I agree, connect me",
+    "support_footer": true,
+    "use_start_url": true,
+    "default_redirect_url": "https://www.health.mil/",
+    "redirect_delay_s": 10,
+    "visit_ttl_s": 1800,
+    "rate_page_per_min": 300,
+    "rate_accept_per_min": 10
+  }
+}

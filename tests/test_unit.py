@@ -252,3 +252,21 @@ def test_status_default_off_and_async_needs_status():
 def test_bad_fingerprint_rejected():
     with pytest.raises(ConfigError):
         load_config({**SZ_ENV, "SZ_CERT_SHA256": "abcd"})
+
+
+def test_params_shared_vectors():
+    """tests/vectors/params.json is also checked by cloud/test/params.test.ts (TypeScript port)."""
+    import json
+    import os
+    from urllib.parse import parse_qsl
+
+    from werkzeug.datastructures import MultiDict
+    path = os.path.join(os.path.dirname(__file__), "vectors", "params.json")
+    with open(path, encoding="utf-8") as fh:
+        vectors = json.load(fh)["vectors"]
+    assert len(vectors) > 40
+    for v in vectors:
+        p = parse_redirect(MultiDict(parse_qsl(v["query"], keep_blank_values=True)))
+        got = {"values": p.values, "unknown": p.unknown, "rejected": p.rejected,
+               "missing": p.missing, "aliases": p.aliases, "ok": p.ok}
+        assert got == v["expect"], v["query"]

@@ -75,3 +75,8 @@ temp/
 fake-nbi-ca.pem
 # RUCKUS PDFs are copyrighted; keep them out of the public repo
 ruckus-docs/
+
+# Cloudflare Worker (cloud/)
+node_modules/
+.wrangler/
+.dev.vars
