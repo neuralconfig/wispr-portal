@@ -1,4 +1,4 @@
-// The "dha" theme: the production look for the DHA demo (plan, "DHA theme"). A flat navy header with a
+// The "dha" theme: the production look for the DHA demo (plan, "DHA theme"). A flat DHA-blue header with a
 // text wordmark (logo slot empty until the logo is cleared), the U.S. Government notice up front, plain-language
 // key terms, the full terms and the verbatim DoD notice in <details> (no inner scroll box: T-199), one Accept
 // button, the emergency line, and footer links to Privacy / Accessibility / Help on our own host.
