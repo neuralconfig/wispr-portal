@@ -46,7 +46,7 @@
       "logo": null,
       "help_text": "Need help? Please ask at the information desk.",
       "idle_minutes": 5,
-      "session_minutes": 60
+      "session_minutes": 240
     }
   }
 }
