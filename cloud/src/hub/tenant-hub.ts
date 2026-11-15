@@ -14,6 +14,8 @@ export const PING = '{"type":"ping"}';
 export const PONG = '{"type":"pong"}';
 const PROTOCOL = 1;
 const RPC_TIMEOUT_MS = 30_000;
+/** After a connector drops mid-Accept, wait this long for a reconnect and resend once (SZ Login is idempotent: 101 = already authorized). */
+const ACCEPT_RETRY_WAIT_MS = 3_000;
 const PROBE_FRESH_MS = 120_000;
 const EVENT_RETENTION_MS = 30 * 24 * 3600 * 1000;
 const VISIT_RETENTION_MS = 24 * 3600 * 1000;
@@ -31,6 +33,8 @@ const STREAM_STRIP = ["body", "reply"];
 export type Tenant = typeof tenantConfig;
 
 interface Attachment {
+  /** Socket id: pending RPCs are failed when THIS socket goes (or is replaced), not only when none is left. */
+  sid?: string;
   egressIp: string;
   connectedAt: string;
   hello?: { version?: string; env?: string; ceiling?: unknown };
@@ -55,6 +59,7 @@ interface Pending {
   resolve: (v: RpcReply) => void;
   reject: (e: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  sid: string | null;
 }
 
 /** What the Worker needs to render the page after a guest action. */
@@ -233,6 +238,7 @@ export class TenantHub extends DurableObject<Env> {
     // One connector per tenant in M-a: a new connection replaces the old one.
     for (const old of this.sockets()) {
       try {
+        this.failPending((old.deserializeAttachment() as Attachment | null)?.sid ?? null, "connector replaced");
         old.close(4001, "replaced by a newer connection");
       } catch {
         /* already closed */
@@ -241,7 +247,7 @@ export class TenantHub extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server, ["connector"]);
-    const att: Attachment = { egressIp, connectedAt: nowIso() };
+    const att: Attachment = { sid: crypto.randomUUID(), egressIp, connectedAt: nowIso() };
     server.serializeAttachment(att);
     if (egressIp) this.kvSet("egress_ip", egressIp);
     this.kvSet("connected_at", att.connectedAt);
@@ -327,14 +333,39 @@ export class TenantHub extends DurableObject<Env> {
       reason: reason.slice(0, 120),
       client_ip_seen: att?.egressIp ?? null,
     });
-    // Callers waiting on this socket fail at once; a sent request is never resent elsewhere.
-    if (!this.readySocket()) {
-      for (const [id, p] of this.pending) {
-        clearTimeout(p.timer);
-        p.reject(new Error("connector disconnected"));
-        this.pending.delete(id);
-      }
+    // Callers waiting on this socket fail at once (all of them when no connector is left); runAccept may resend
+    // an Accept once on a newer socket (Login is idempotent).
+    this.failPending(att?.sid ?? null, "connector disconnected");
+    if (!this.readySocket()) this.failPending(null, "connector disconnected");
+  }
+
+  /** Reject the RPCs sent on socket `sid` (null = every pending RPC). */
+  private failPending(sid: string | null, why: string): void {
+    for (const [id, p] of this.pending) {
+      if (sid !== null && p.sid !== sid) continue;
+      clearTimeout(p.timer);
+      p.reject(new Error(why));
+      this.pending.delete(id);
     }
+  }
+
+  private readySid(): string | null {
+    const ws = this.readySocket();
+    return ws ? ((ws.deserializeAttachment() as Attachment | null)?.sid ?? null) : null;
+  }
+
+  /** Wait up to `ms` for a ready connector socket (hello + config applied) other than socket `notSid`. */
+  private async waitReady(ms: number, notSid: string | null): Promise<boolean> {
+    const ok = () => {
+      const s = this.readySid();
+      return this.readySocket() !== null && (notSid === null || s !== notSid);
+    };
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      if (ok()) return true;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return ok();
   }
 
   /** Push the NBI config to a socket; false when the hub has no NBI password yet. */
@@ -385,7 +416,7 @@ export class TenantHub extends DurableObject<Env> {
         this.pending.delete(id);
         reject(new Error("connector timeout"));
       }, timeoutMs);
-      this.pending.set(id, { resolve, reject, timer });
+      this.pending.set(id, { resolve, reject, timer, sid: (ws.deserializeAttachment() as Attachment | null)?.sid ?? null });
     });
     ws.send(JSON.stringify({ type: "rpc", id, op, args }));
     return reply;
@@ -689,16 +720,27 @@ export class TenantHub extends DurableObject<Env> {
     }
     const t0 = Date.now();
     let reply: RpcReply;
+    const acceptArgs = {
+      ref,
+      params: {
+        client_mac: v.params.client_mac,
+        uip: v.params.uip ?? "",
+        proxy: v.params.proxy ?? "0",
+        ...(v.params.nbiIP ? { nbiIP: v.params.nbiIP } : {}),
+      },
+    };
+    const firstSid = this.readySid();
     try {
-      reply = await this.rpc("accept", {
-        ref,
-        params: {
-          client_mac: v.params.client_mac,
-          uip: v.params.uip ?? "",
-          proxy: v.params.proxy ?? "0",
-          ...(v.params.nbiIP ? { nbiIP: v.params.nbiIP } : {}),
-        },
-      });
+      try {
+        reply = await this.rpc("accept", acceptArgs);
+      } catch (e1) {
+        // Lost mid-call (socket dropped, replaced or silent): resend once on a connector that is back within
+        // ACCEPT_RETRY_WAIT_MS. Safe because SZ Login on an authorized client answers 101 (= authorized).
+        const m1 = (e1 as Error).message;
+        if (m1 === "connector not connected" || !(await this.waitReady(ACCEPT_RETRY_WAIT_MS, firstSid))) throw e1;
+        this.appendEvent("accept_retry", { ...base, first_error: m1, waited_ms: Date.now() - t0, ...ue }, ref);
+        reply = await this.rpc("accept", acceptArgs);
+      }
     } catch (e) {
       // Not connected: nothing was sent. Lost mid-call: the controller may have acted, so the
       // guest is told to try again (Login on an authorized client answers 101) and nothing is resent.

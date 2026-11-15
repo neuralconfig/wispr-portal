@@ -208,7 +208,23 @@ describe("guest flow", () => {
     expect(got.at(-1)).toMatchObject({ kind: "login_failed", http_status: 502 });
   });
 
-  it("fails fast when the connector is down, and on a disconnect mid-call never resends", async () => {
+  it("resends an Accept once when the connector is replaced mid-call (T-294 connector_lost)", async () => {
+    await attach(() => null); // first socket never replies (half-dead)
+    const { ref, csrf } = form(await (await page()).text());
+    const pending = post({ ref, csrf });
+    await settle(100);
+    const old = fake;
+    fake = await connectFake({ accept: (args) => connectorReply(args.ref) }); // the connector reconnects: hub replaces the old socket
+    await handshake(fake);
+    const res = await pending;
+    expect(res.status).toBe(200);
+    const ev = (await refEvents(ref)).map((e) => e.event);
+    expect(ev).toContain("accept_retry");
+    expect((await refEvents(ref)).find((e) => e.event === "accept_retry")).toMatchObject({ first_error: "connector replaced" });
+    old?.ws?.close(1000, "test done");
+  });
+
+  it("fails fast when the connector is down, and on a disconnect mid-call with no reconnect does not resend", async () => {
     await attach(() => null); // never replies
     let { ref, csrf } = form(await (await page()).text());
     const pending = post({ ref, csrf });
